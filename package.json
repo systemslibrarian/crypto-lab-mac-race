@@ -1,0 +1,20 @@
+{
+  "name": "crypto-lab-mac-race",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "deploy": "vite build && gh-pages -d dist"
+  },
+  "dependencies": {
+    "@noble/ciphers": "^1.2.0"
+  },
+  "devDependencies": {
+    "gh-pages": "^6.1.1",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.10"
+  }
+}
