@@ -61,6 +61,7 @@ body {
 }
 
 .hero {
+  position: relative;
   border: 1px solid var(--line);
   background: linear-gradient(140deg, color-mix(in srgb, var(--panel) 94%, white 6%), var(--panel));
   padding: 1rem;
@@ -91,7 +92,6 @@ h2 {
   margin-bottom: 0;
 }
 
-.theme-toggle,
 button,
 input,
 textarea,
@@ -99,8 +99,7 @@ a {
   min-height: 44px;
 }
 
-button,
-.theme-toggle {
+button {
   border: 1px solid var(--line);
   background: color-mix(in srgb, var(--accent) 22%, var(--panel));
   color: var(--text);
@@ -111,9 +110,24 @@ button,
   font-family: inherit;
 }
 
+.theme-toggle {
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--panel) 80%, var(--accent) 20%);
+  color: var(--text);
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
 button:hover,
 .theme-toggle:hover {
-  filter: brightness(1.08);
+  background: color-mix(in srgb, var(--panel) 68%, var(--accent) 32%);
   cursor: pointer;
 }
 

@@ -44,10 +44,13 @@ export function renderApp(container: HTMLElement): void {
     <div class="page" aria-label="MAC Race demo root">
       <a class="skip-link" href="#main-content" aria-label="Skip to main content">Skip to main content</a>
       <header class="hero" aria-label="Header section">
-        <div class="hero-top">
-          <span class="chip chip-category" aria-label="Category chip">MAC</span>
-          <button id="theme-toggle" class="theme-toggle" aria-label="Toggle dark and light mode">Toggle theme</button>
-        </div>
+        <span class="chip chip-category" aria-label="Category chip">MAC</span>
+        <button
+          id="theme-toggle"
+          class="theme-toggle"
+          aria-label="Switch to light mode"
+          style="position: absolute; top: 0; right: 0;"
+        >🌙</button>
         <h1>MAC Race</h1>
         <p class="subtitle">Construction, misuse resistance, and real attack demonstrations for modern Message Authentication Codes.</p>
         <p class="chip-row" aria-label="Primitive chips">HMAC-SHA-256 · HMAC-SHA-512 · AES-CMAC · Poly1305 · GHASH</p>
@@ -171,14 +174,6 @@ export function renderApp(container: HTMLElement): void {
       <div id="aria-live" class="sr-only" aria-live="polite" role="status"></div>
     </div>
   `;
-
-  const root = document.documentElement;
-  byId<HTMLButtonElement>('theme-toggle').addEventListener('click', () => {
-    const next = root.dataset.theme === 'light' ? 'dark' : 'light';
-    root.dataset.theme = next;
-    setStatus(`Theme switched to ${next} mode.`);
-  });
-
   byId<HTMLButtonElement>('hmac-run').addEventListener('click', async () => {
     try {
       const message = byId<HTMLTextAreaElement>('hmac-message').value;

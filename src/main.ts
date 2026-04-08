@@ -8,6 +8,27 @@ import { runPoly1305SelfTest } from './poly1305';
 import { runTimingSelfTest } from './timing';
 import { renderApp } from './ui';
 
+function wireThemeToggle(): void {
+  const root = document.documentElement;
+  const button = document.querySelector<HTMLButtonElement>('#theme-toggle');
+  if (!button) return;
+
+  const setThemeUi = (theme: 'dark' | 'light'): void => {
+    root.dataset.theme = theme;
+    button.textContent = theme === 'dark' ? '🌙' : '☀️';
+    button.setAttribute('aria-label', theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode');
+  };
+
+  const initialTheme: 'dark' | 'light' = root.dataset.theme === 'light' ? 'light' : 'dark';
+  setThemeUi(initialTheme);
+
+  button.addEventListener('click', () => {
+    const nextTheme: 'dark' | 'light' = root.dataset.theme === 'light' ? 'dark' : 'light';
+    setThemeUi(nextTheme);
+    localStorage.setItem('theme', nextTheme);
+  });
+}
+
 async function runSelfTests(): Promise<void> {
   const checks = await Promise.all([
     runHmacSelfTest(),
@@ -27,6 +48,6 @@ async function runSelfTests(): Promise<void> {
 const app = document.querySelector<HTMLDivElement>('#app');
 if (!app) throw new Error('Missing #app container');
 
-document.documentElement.dataset.theme = 'dark';
 renderApp(app);
+wireThemeToggle();
 void runSelfTests();
