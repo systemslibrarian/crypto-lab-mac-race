@@ -118,7 +118,7 @@ function gfInv(x: Uint8Array): Uint8Array {
   let exp = (1n << 128n) - 2n;
   let base: Uint8Array<ArrayBufferLike> = x;
   let result: Uint8Array<ArrayBufferLike> = new Uint8Array(BLOCK_SIZE);
-  result[15] = 1;
+  result[0] = 0x80;
 
   while (exp > 0n) {
     if ((exp & 1n) === 1n) result = gf128Mul(result as any, base as any) as any;
@@ -152,6 +152,20 @@ export function runGhashReuseAttackDemo(): GhashReuseDemo {
     forgedValid: bytesToHex(forgedTag) === bytesToHex(realTag),
     note: 'Nonce reuse leaks linear equations in GHASH; with enough structure, H can be solved and forgeries follow.'
   };
+}
+
+export async function verifyGhash(ciphertextHex: string, keyHex: string, candidateTagHex: string): Promise<boolean> {
+  try {
+    const expected = await computeGhash(ciphertextHex, keyHex);
+    const a = expected.yHex.toLowerCase();
+    const b = candidateTagHex.trim().toLowerCase();
+    if (a.length !== b.length) return false;
+    let diff = 0;
+    for (let i = 0; i < a.length; i += 1) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+    return diff === 0;
+  } catch {
+    return false;
+  }
 }
 
 export function runGhashSelfTest(): boolean {

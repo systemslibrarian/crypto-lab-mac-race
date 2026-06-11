@@ -59,6 +59,98 @@ export function runTimingDemo(rounds = 50000): TimingDemo {
   };
 }
 
+function toHex(bytes: Uint8Array): string {
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+export type RecoveryProgress = {
+  byteIndex: number;
+  byteValue: number;
+  recoveredHex: string;
+  totalBytes: number;
+  oracleQueries: number;
+};
+
+export type RecoveryResult = {
+  trueTagHex: string;
+  recoveredTagHex: string;
+  bytesRecovered: number;
+  totalBytes: number;
+  oracleQueries: number;
+  success: boolean;
+};
+
+// The attacker's only tool is a simulated server endpoint that uses
+// `naiveEqual` for tag comparison. Real `performance.now()` in a browser
+// is too noisy to recover bytes, so the oracle below reports its
+// prefix-match length directly — the statistical equivalent of a real
+// attacker who averages enough samples to extract that signal. The
+// attack methodology (recover one byte at a time, keep whichever
+// candidate produced the longest "time") is identical to a real-world
+// remote-timing attack against a non-constant-time tag comparator.
+function makeNaiveCompareOracle(tagLength: number) {
+  const trueTag = crypto.getRandomValues(new Uint8Array(tagLength));
+  let queries = 0;
+  return {
+    trueTag,
+    queries: () => queries,
+    measure(candidate: Uint8Array): number {
+      queries += 1;
+      let units = 0;
+      for (let i = 0; i < trueTag.length; i += 1) {
+        units += 1;
+        if (trueTag[i] !== candidate[i]) break;
+      }
+      return units;
+    }
+  };
+}
+
+export async function recoverTagByTimingAttack(
+  tagLength = 16,
+  onProgress?: (p: RecoveryProgress) => void,
+  bytesToRecover?: number
+): Promise<RecoveryResult> {
+  const target = Math.min(bytesToRecover ?? tagLength, tagLength);
+  const oracle = makeNaiveCompareOracle(tagLength);
+  const recovered = new Uint8Array(tagLength);
+
+  for (let i = 0; i < target; i += 1) {
+    let bestByte = 0;
+    let bestUnits = -1;
+    for (let candidate = 0; candidate < 256; candidate += 1) {
+      recovered[i] = candidate;
+      const units = oracle.measure(recovered);
+      if (units > bestUnits) {
+        bestUnits = units;
+        bestByte = candidate;
+      }
+    }
+    recovered[i] = bestByte;
+    if (onProgress) {
+      onProgress({
+        byteIndex: i,
+        byteValue: bestByte,
+        recoveredHex: toHex(recovered.slice(0, i + 1)),
+        totalBytes: tagLength,
+        oracleQueries: oracle.queries()
+      });
+    }
+    await new Promise((resolve) => setTimeout(resolve, 35));
+  }
+
+  const recoveredHex = toHex(recovered.slice(0, target));
+  const trueHex = toHex(oracle.trueTag.slice(0, target));
+  return {
+    trueTagHex: toHex(oracle.trueTag),
+    recoveredTagHex: recoveredHex,
+    bytesRecovered: target,
+    totalBytes: tagLength,
+    oracleQueries: oracle.queries(),
+    success: recoveredHex === trueHex
+  };
+}
+
 export function runTimingSelfTest(): boolean {
   const a = toBytes('abcdef');
   const b = toBytes('abcdef');

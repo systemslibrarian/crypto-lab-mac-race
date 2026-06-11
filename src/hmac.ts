@@ -101,6 +101,29 @@ export async function computeHmac(message: string, key: string, hash: HmacAlgo):
   return { macHex, visual };
 }
 
+export function constantTimeEqualHex(aHex: string, bHex: string): boolean {
+  if (aHex.length !== bHex.length) return false;
+  let diff = 0;
+  for (let i = 0; i < aHex.length; i += 1) {
+    diff |= aHex.charCodeAt(i) ^ bHex.charCodeAt(i);
+  }
+  return diff === 0;
+}
+
+export async function verifyHmac(
+  message: string,
+  key: string,
+  hash: HmacAlgo,
+  candidateTagHex: string
+): Promise<boolean> {
+  try {
+    const expected = await computeHmac(message, key, hash);
+    return constantTimeEqualHex(expected.macHex.toLowerCase(), candidateTagHex.trim().toLowerCase());
+  } catch {
+    return false;
+  }
+}
+
 export async function avalancheBitFlip(message: string, key: string): Promise<{
   original: string;
   flippedMessage: string;

@@ -93,7 +93,7 @@ async function deriveSubkeys(keyBytes: Uint8Array): Promise<{ k1: Uint8Array; k2
 
 function splitBlocks(message: Uint8Array): Uint8Array[] {
   if (message.length === 0) {
-    return [new Uint8Array(BLOCK_SIZE)];
+    return [new Uint8Array(0)];
   }
 
   const blocks: Uint8Array[] = [];
@@ -146,6 +146,20 @@ async function computeCmacBytes(messageBytes: Uint8Array, keyInput: string): Pro
       chainingHex: chain
     }
   };
+}
+
+export async function verifyCmac(message: string, keyInput: string, candidateTagHex: string): Promise<boolean> {
+  try {
+    const expected = await computeCmac(message, keyInput);
+    const a = expected.tagHex.toLowerCase();
+    const b = candidateTagHex.trim().toLowerCase();
+    if (a.length !== b.length) return false;
+    let diff = 0;
+    for (let i = 0; i < a.length; i += 1) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+    return diff === 0;
+  } catch {
+    return false;
+  }
 }
 
 export async function runCmacSelfTest(): Promise<boolean> {

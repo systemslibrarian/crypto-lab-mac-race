@@ -117,7 +117,7 @@ export function runKeyReuseAttackDemo(): Poly1305ReuseDemo {
 
   for (let rGuess = 0n; rGuess <= 0xffffn; rGuess += 1n) {
     const acc1 = polyOneBlockAcc(msg1, rGuess);
-    const sGuess = (tag1Int - acc1 + MOD128) % MOD128;
+    const sGuess = ((tag1Int - acc1) % MOD128 + MOD128) % MOD128;
     const acc2 = polyOneBlockAcc(msg2, rGuess);
     const predicted2 = (acc2 + sGuess) % MOD128;
     if (predicted2 === tag2Int) {
@@ -146,6 +146,19 @@ export function runKeyReuseAttackDemo(): Poly1305ReuseDemo {
     validForgery: constantTimeEqual16(forgedTag, realTag),
     recoveredRHex: recoveredR.toString(16).padStart(4, '0')
   };
+}
+
+export function verifyPoly1305(message: string, keyHex: string, candidateTagHex: string): boolean {
+  try {
+    const msg = encoder.encode(message);
+    const key = fromHex(keyHex);
+    if (key.length !== 32) return false;
+    const expected = poly1305(msg, key);
+    const candidate = fromHex(candidateTagHex);
+    return constantTimeEqual16(expected, candidate);
+  } catch {
+    return false;
+  }
 }
 
 export function runPoly1305SelfTest(): boolean {
