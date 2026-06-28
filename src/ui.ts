@@ -534,6 +534,13 @@ export function renderApp(container: HTMLElement): void {
 
       <footer class="footer" aria-label="Footer">
         <a class="github-badge" href="https://github.com/systemslibrarian/crypto-lab-mac-race" target="_blank" rel="noreferrer" aria-label="GitHub repository link">GitHub</a>
+        <p class="links" aria-label="Related demos">Related demos:
+          <a href="https://systemslibrarian.github.io/crypto-lab-poly1305-mac/" target="_blank" rel="noreferrer">crypto-lab-poly1305-mac</a>
+          <a href="https://systemslibrarian.github.io/crypto-lab-nonce-guard/" target="_blank" rel="noreferrer">crypto-lab-nonce-guard</a>
+          <a href="https://systemslibrarian.github.io/crypto-lab-babel-hash/" target="_blank" rel="noreferrer">crypto-lab-babel-hash</a>
+          <a href="https://systemslibrarian.github.io/crypto-lab-hash-zoo/" target="_blank" rel="noreferrer">crypto-lab-hash-zoo</a>
+          <a href="https://systemslibrarian.github.io/crypto-lab-aes-modes/" target="_blank" rel="noreferrer">crypto-lab-aes-modes</a>
+        </p>
         <p>So whether you eat or drink or whatever you do, do it all for the glory of God. - 1 Corinthians 10:31</p>
       </footer>
       <div id="aria-live" class="sr-only" aria-live="polite" role="status"></div>
