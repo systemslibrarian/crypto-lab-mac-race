@@ -7,12 +7,15 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
+    "test:a11y": "playwright test",
     "deploy": "vite build && gh-pages -d dist"
   },
   "dependencies": {
     "@noble/ciphers": "^1.2.0"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.12.1",
+    "@playwright/test": "^1.61.1",
     "gh-pages": "^6.1.1",
     "typescript": "^5.6.3",
     "vite": "^5.4.10"

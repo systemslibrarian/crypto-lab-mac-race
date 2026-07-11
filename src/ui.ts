@@ -259,7 +259,7 @@ export function renderApp(container: HTMLElement): void {
             <button id="hmac-step" class="secondary" aria-label="Step through HMAC stages">Step ▸</button>
             <button id="hmac-reveal" class="secondary" aria-label="Reveal all HMAC stages">Reveal all</button>
           </div>
-          <div id="hmac-output" class="hex stepper" aria-label="HMAC output"></div>
+          <div id="hmac-output" class="hex stepper" role="status" aria-live="polite" aria-label="HMAC output"></div>
 
           <div class="bitdiff-section">
             <p class="note"><strong>Avalanche:</strong> flip one bit of the message or one bit of the key — watch ~50% of output bits change.</p>
@@ -297,7 +297,7 @@ export function renderApp(container: HTMLElement): void {
             <button id="cmac-step" class="secondary" aria-label="Step through CMAC stages">Step ▸</button>
             <button id="cmac-reveal" class="secondary" aria-label="Reveal all CMAC stages">Reveal all</button>
           </div>
-          <div id="cmac-output" class="hex stepper" aria-label="CMAC output"></div>
+          <div id="cmac-output" class="hex stepper" role="status" aria-live="polite" aria-label="CMAC output"></div>
 
           <div class="verifier" aria-label="CMAC server verifier">
             <h3>Server verifies</h3>
@@ -326,7 +326,7 @@ export function renderApp(container: HTMLElement): void {
           <div class="button-row">
             <button id="poly-run" aria-label="Compute Poly1305 tag">Compute tag</button>
           </div>
-          <pre id="poly-output" class="hex" aria-label="Poly1305 output"></pre>
+          <pre id="poly-output" class="hex" role="status" aria-live="polite" aria-label="Poly1305 output"></pre>
 
           <div class="attack-pane" aria-label="Poly1305 one-time key reuse attack">
             <h3>You are the attacker</h3>
@@ -334,7 +334,7 @@ export function renderApp(container: HTMLElement): void {
             <div class="button-row">
               <button id="poly-attack" aria-label="Run Poly1305 key reuse attack">Run reuse attack →</button>
             </div>
-            <pre id="poly-attack-output" class="hex" aria-label="Poly1305 attack output"></pre>
+            <pre id="poly-attack-output" class="hex" role="status" aria-live="polite" aria-label="Poly1305 attack output"></pre>
           </div>
 
           <div class="verifier" aria-label="Poly1305 server verifier">
@@ -366,7 +366,7 @@ export function renderApp(container: HTMLElement): void {
           <div class="button-row">
             <button id="ghash-run" aria-label="Compute GHASH">Compute GHASH</button>
           </div>
-          <pre id="ghash-output" class="hex" aria-label="GHASH output"></pre>
+          <pre id="ghash-output" class="hex" role="status" aria-live="polite" aria-label="GHASH output"></pre>
 
           <div class="attack-pane" aria-label="GHASH nonce reuse attack">
             <h3>You are the attacker</h3>
@@ -374,7 +374,7 @@ export function renderApp(container: HTMLElement): void {
             <div class="button-row">
               <button id="ghash-attack" aria-label="Run GHASH nonce reuse attack">Run nonce reuse attack →</button>
             </div>
-            <pre id="ghash-attack-output" class="hex" aria-label="GHASH attack output"></pre>
+            <pre id="ghash-attack-output" class="hex" role="status" aria-live="polite" aria-label="GHASH attack output"></pre>
           </div>
 
           <div class="verifier" aria-label="GHASH server verifier">
