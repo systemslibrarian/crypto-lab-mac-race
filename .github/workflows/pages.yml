@@ -28,6 +28,9 @@ jobs:
       - run: npm ci
       - run: npm run build
 
+      - name: Crypto unit tests (vitest KAT / forgery / property)
+        run: npm test
+
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
       - name: Accessibility gate (axe-core, WCAG A/AA)

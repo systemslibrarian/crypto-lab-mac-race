@@ -151,25 +151,31 @@ if ((K1[0] & 0x80) !== 0) K2[15] ^= 0x87;
 // Last block: XOR with K1 if message is a whole multiple of 16,
 // otherwise apply 10* padding and XOR with K2.`;
 
-const POLY_SRC = `// Two messages under the SAME one-time key leak r:
-// tag1 = (m1 * r + s) mod 2^128
-// tag2 = (m2 * r + s) mod 2^128
-// tag1 - tag2 ≡ (m1 - m2) * r  → solve for r
+const POLY_SRC = `// Two messages under the SAME one-time key leak r.
+// tag = ((m * r) mod (2^130-5) + s) mod 2^128
+// TEACHING SIMPLIFICATION: r is constrained to 16 bits so that m*r
+// stays below 2^130-5 (the mod-P reduction never fires). That makes the
+// recovery a live 16-bit search in the browser. With a full ~106-bit r the
+// per-message mod-P quotient (~115 bits) is unknown to the attacker, so two
+// tags are NOT enough — do not read "16-bit" as a property of real Poly1305.
 for (let rGuess = 0n; rGuess <= 0xffffn; rGuess++) {
-  const sGuess = (tag1 - m1*rGuess + MOD) % MOD;
-  if ((m2*rGuess + sGuess) % MOD === tag2) {
-    // forge any new message m3 with the recovered (r, s).
+  const sGuess = (tag1 - (m1*rGuess % P) + MOD) % MOD;
+  if (((m2*rGuess % P) + sGuess) % MOD === tag2) {
+    // forge any new message m3 with the recovered (r, s) — genuinely valid.
   }
 }`;
 
-const GHASH_SRC = `// GHASH is linear in GF(2^128):
-//   T = C * H + L * H
-// Two ciphertexts under the SAME nonce share the same H.
+const GHASH_SRC = `// Live Forbidden Attack — nothing is hard-coded.
+// A fresh AES key is generated each run; H = E_K(0^128) via WebCrypto.
+// Two random single-block ciphertexts are tagged under the reused nonce:
+//   T1 = C1 * H,  T2 = C2 * H   (GHASH is linear in GF(2^128))
 //   T1 ^ T2 = (C1 ^ C2) * H
 //   H = (T1 ^ T2) * (C1 ^ C2)^(-1)
-const deltaT = xor16(T1, T2);
+const H_true = await aesEncryptBlock(key, ZERO16);   // hidden from attacker
+const deltaT = xor16(gf128Mul(C1, H_true), gf128Mul(C2, H_true));
 const deltaC = xor16(C1, C2);
-const H = gf128Mul(deltaT, gfInverse(deltaC));`;
+const H = gf128Mul(deltaT, gfInverse(deltaC));        // == H_true
+// Forge any target; the server (holding H_true) confirms the tag.`;
 
 const LENGTHEXT_SRC = `// Attacker observes tag = SHA-256(secret || message)
 // SHA-256 state IS the tag — attacker resumes from it.
@@ -204,7 +210,7 @@ const LESSON_STEPS: { panelId: string; title: string; body: string }[] = [
   { panelId: 'p1', title: '1. HMAC — the safe default', body: 'Start here. HMAC nests two hashes around the key so that knowing the tag tells you nothing about the internal hash state. This is what API request signing should use.' },
   { panelId: 'p5', title: '2. Why we need HMAC: length-extension', body: 'Bare SHA-256(secret || message) leaks enough internal state through its tag that an attacker can forge tags for extended messages without the secret. Forge a tag, then verify it on the broken server.' },
   { panelId: 'p2', title: '3. CMAC — block-cipher MAC', body: 'When AES is already in your stack, CMAC gives you a NIST-approved MAC built from a block cipher. Notice K1/K2 are derived from AES_K(0).' },
-  { panelId: 'p3', title: '4. Poly1305 — fast, one-time only', body: 'A polynomial MAC. Reuse the one-time key across two messages and r can be solved in seconds; the attacker forges arbitrary tags afterwards.' },
+  { panelId: 'p3', title: '4. Poly1305 — fast, one-time only', body: 'A polynomial MAC. Reusing the one-time key destroys authenticity: the two tags become linear equations in r. The demo uses a deliberately narrowed r so the recovery runs live in your browser — the algebra is real, the search space is a teaching simplification (disclosed in the panel).' },
   { panelId: 'p4', title: '5. GHASH — linear in GF(2^128)', body: "GHASH is what authenticates AES-GCM. It is linear in the field, so nonce reuse leaks the hash subkey H. This is the Forbidden Attack." },
   { panelId: 'p6', title: '6. Timing attack — non-constant-time compare', body: 'A naive byte-by-byte equality leaks prefix-match length. Watch a real byte-by-byte tag recovery driven entirely by that signal.' }
 ];
@@ -330,7 +336,8 @@ export function renderApp(container: HTMLElement): void {
 
           <div class="attack-pane" aria-label="Poly1305 one-time key reuse attack">
             <h3>You are the attacker</h3>
-            <p class="note">A buggy server reused the <em>same</em> one-time key for two invoice messages. Recover <code>r</code> and forge a new invoice.</p>
+            <p class="note">A buggy server reused the <em>same</em> one-time key for two invoice messages. The two tags are linear equations in <code>r</code>: <code>tag = (m·r mod 2¹³⁰⁻⁵ + s) mod 2¹²⁸</code>. Recover <code>r</code> and forge a new invoice.</p>
+            <p class="note"><strong>Honest disclosure:</strong> real Poly1305 <code>r</code> is a ~106-bit clamped value, and each single-block accumulator is reduced mod 2¹³⁰⁻⁵ by a ~115-bit quotient the attacker never sees — so recovering <code>r</code> from just two tags is <em>not</em> tractable. To make the algebra runnable live in your browser this demo constrains <code>r</code> to 16 bits (so <code>m·r &lt; 2¹³⁰⁻⁵</code> and the reduction vanishes). The forgery it produces is genuinely valid against the real key; the <em>simplification is only the size of the search</em>. Generic Poly1305 reuse is catastrophic but not literally 16-bit-breakable.</p>
             <div class="button-row">
               <button id="poly-attack" aria-label="Run Poly1305 key reuse attack">Run reuse attack →</button>
             </div>
@@ -704,7 +711,6 @@ function wireCmacPanel(): void {
 
 function wirePolyPanel(): void {
   let lastAttack: ReturnType<typeof runKeyReuseAttackDemo> | null = null;
-  let lastAttackKeyHex = '';
 
   byId<HTMLButtonElement>('poly-run').addEventListener('click', () => {
     try {
@@ -725,13 +731,15 @@ function wirePolyPanel(): void {
       const attack = runKeyReuseAttackDemo();
       lastAttack = attack;
       byId<HTMLElement>('poly-attack-output').textContent =
-        `Observed:\n` +
+        `Teaching setup: r constrained to ${attack.rSpaceBits} bits so the algebra runs live in-browser.\n` +
+        `(Real r is ~106 bits; see note below — full 2-tag recovery is NOT tractable.)\n\n` +
+        `Observed (same one-time key reused):\n` +
         `  ${attack.msg1}  →  tag ${attack.tag1Hex}\n` +
         `  ${attack.msg2}  →  tag ${attack.tag2Hex}\n` +
         `\n` +
-        `Solved weak r = 0x${attack.recoveredRHex}\n` +
+        `Solved r = 0x${attack.recoveredRHex} (searched 2^${attack.rSpaceBits} candidates)\n` +
         `Forged ${attack.msg3}  →  tag ${attack.forgedTagHex}\n` +
-        `Attacker's local check: forgery ${attack.validForgery ? 'valid' : 'invalid'}.`;
+        `Forgery matches the true tag under the real key: ${attack.validForgery ? 'VALID' : 'invalid'}.`;
       setVerdictIdle(byId<HTMLElement>('poly-verdict'), 'forged tag ready — submit it');
       setStatus('Poly1305 key reuse attack succeeded.');
     } catch (error) {
@@ -744,19 +752,15 @@ function wirePolyPanel(): void {
       setVerdictIdle(byId<HTMLElement>('poly-verdict'), 'run the attack first');
       return;
     }
-    // Note: the attack demo uses an internal weak key. We can't independently
-    // re-verify against the actual key from the UI, but the attack's own
-    // constant-time check is the same operation a real server would do.
+    // validForgery is a constant-time comparison of the forged tag against the
+    // tag the REAL key produces for m3 (poly1305(msg3, key)) — i.e. exactly the
+    // check a genuine server runs. The recovered r/s reproduce the true tag.
     setVerdict(byId<HTMLElement>('poly-verdict'), lastAttack.validForgery);
   });
-
-  // Reference to avoid unused-var lint; lastAttackKeyHex would be wired
-  // if we exposed the key from the attack demo.
-  void lastAttackKeyHex;
 }
 
 function wireGhashPanel(): void {
-  let lastAttack: ReturnType<typeof runGhashReuseAttackDemo> | null = null;
+  let lastAttack: Awaited<ReturnType<typeof runGhashReuseAttackDemo>> | null = null;
   byId<HTMLButtonElement>('ghash-run').addEventListener('click', async () => {
     try {
       const ciphertextHex = byId<HTMLTextAreaElement>('ghash-ciphertext').value.trim();
@@ -771,15 +775,22 @@ function wireGhashPanel(): void {
     }
   });
 
-  byId<HTMLButtonElement>('ghash-attack').addEventListener('click', () => {
+  byId<HTMLButtonElement>('ghash-attack').addEventListener('click', async () => {
     try {
-      const attack = runGhashReuseAttackDemo();
+      const attack = await runGhashReuseAttackDemo();
       lastAttack = attack;
       byId<HTMLElement>('ghash-attack-output').textContent =
+        `Live H = E_K(0^128) from a fresh random AES key (hidden from attacker).\n` +
+        `Observed under reused nonce:\n` +
+        `  C1 ${attack.c1Hex}  →  T1 ${attack.t1Hex}\n` +
+        `  C2 ${attack.c2Hex}  →  T2 ${attack.t2Hex}\n\n` +
         `Δ ciphertext: ${attack.deltaCHex}\n` +
         `Δ tag:        ${attack.deltaTHex}\n` +
         `Recovered H = ΔT · (ΔC)⁻¹ = ${attack.recoveredHHex}\n` +
-        `Forgery against a new ciphertext ${attack.forgedValid ? 'VALID' : 'invalid'}.\n\n` +
+        `Recovered H equals the true hidden H: ${attack.hMatchesTrue ? 'YES' : 'no'}\n\n` +
+        `Forge target C3 ${attack.targetCiphertextHex}\n` +
+        `Forged tag       ${attack.forgedTagHex}\n` +
+        `Server (holds true H) accepts forgery: ${attack.serverAccepts ? 'VALID' : 'invalid'}.\n\n` +
         attack.note;
       setVerdictIdle(byId<HTMLElement>('ghash-verdict'), 'forged — submit it');
       setStatus('GHASH nonce reuse attack succeeded.');

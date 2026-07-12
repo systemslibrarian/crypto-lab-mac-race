@@ -20,6 +20,16 @@ export type Poly1305ReuseDemo = {
   forgedTagHex: string;
   validForgery: boolean;
   recoveredRHex: string;
+  /**
+   * Bits of `r` that the classroom demo leaves free to brute-force. Real
+   * Poly1305 `r` is a ~106-bit clamped value; recovering it from just two
+   * tags is NOT tractable because each single-block accumulator is reduced
+   * mod 2^130-5 (a ~115-bit quotient the attacker cannot see). To keep the
+   * *algebra* live-runnable in a browser we constrain `r` to this many bits
+   * so `m·r < 2^130-5` and the reduction vanishes. Disclosed so nobody
+   * mistakes this for "generic reuse is 16-bit-breakable."
+   */
+  rSpaceBits: number;
 };
 
 function toHex(bytes: Uint8Array): string {
@@ -68,9 +78,20 @@ function polyOneBlockAcc(message: Uint8Array, r: bigint): bigint {
   return (m * r) % P130;
 }
 
-function deriveWeakOneTimeKey(): Uint8Array {
+// Bits of `r` the browser-runnable reuse demo leaves free. With r < 2^16 the
+// single-block product m·r stays below 2^130-5, so the mod-P reduction never
+// fires and two tags recover r exactly by cheap 16-bit search. See the note on
+// Poly1305ReuseDemo.rSpaceBits for why the FULL attack is not tractable here.
+export const DEMO_R_SPACE_BITS = 16;
+
+// Builds a one-time key whose `r` lives in a `DEMO_R_SPACE_BITS`-bit window.
+// The `s` half stays fully random; only `r` is constrained. This is a teaching
+// simplification and is disclosed in the UI — it is NOT how real Poly1305 keys
+// are generated (RFC 8439 derives a full 256-bit unpredictable key per message).
+function deriveTeachingReuseKey(): Uint8Array {
   const key = new Uint8Array(32);
   crypto.getRandomValues(key);
+  // Zero all r-bytes above the low 16 bits (r occupies key[0..15], LE).
   key[2] = 0;
   key[3] = 0;
   for (let i = 4; i < 16; i += 1) key[i] = 0;
@@ -88,7 +109,10 @@ export function constantTimeEqual16(a: Uint8Array, b: Uint8Array): boolean {
 
 export function computePoly1305(message: string, keyHex?: string): Poly1305Result {
   const msg = encoder.encode(message);
-  const key = keyHex ? fromHex(keyHex) : deriveWeakOneTimeKey();
+  // The compute panel uses a full 256-bit random one-time key, as RFC 8439
+  // requires. (The reuse *attack* panel deliberately uses a constrained key —
+  // see deriveTeachingReuseKey — but that must not leak into normal tag output.)
+  const key = keyHex ? fromHex(keyHex) : crypto.getRandomValues(new Uint8Array(32));
   if (key.length !== 32) {
     throw new Error('Poly1305 key must be exactly 32 bytes (64 hex chars)');
   }
@@ -101,7 +125,7 @@ export function computePoly1305(message: string, keyHex?: string): Poly1305Resul
 }
 
 export function runKeyReuseAttackDemo(): Poly1305ReuseDemo {
-  const key = deriveWeakOneTimeKey();
+  const key = deriveTeachingReuseKey();
   const msg1 = encoder.encode('Invoice=1000USD');
   const msg2 = encoder.encode('Invoice=9000USD');
   const msg3 = encoder.encode('Invoice=9999USD');
@@ -144,7 +168,8 @@ export function runKeyReuseAttackDemo(): Poly1305ReuseDemo {
     tag2Hex: toHex(tag2),
     forgedTagHex: toHex(forgedTag),
     validForgery: constantTimeEqual16(forgedTag, realTag),
-    recoveredRHex: recoveredR.toString(16).padStart(4, '0')
+    recoveredRHex: recoveredR.toString(16).padStart(4, '0'),
+    rSpaceBits: DEMO_R_SPACE_BITS
   };
 }
 

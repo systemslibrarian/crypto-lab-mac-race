@@ -11,9 +11,17 @@ export type GhashResult = {
 };
 
 export type GhashReuseDemo = {
+  c1Hex: string;
+  c2Hex: string;
+  t1Hex: string;
+  t2Hex: string;
   deltaCHex: string;
   deltaTHex: string;
   recoveredHHex: string;
+  hMatchesTrue: boolean;
+  targetCiphertextHex: string;
+  forgedTagHex: string;
+  serverAccepts: boolean;
   forgedValid: boolean;
   note: string;
 };
@@ -40,8 +48,8 @@ function fromBigIntBE(n: bigint): Uint8Array {
   return out;
 }
 
-function gf128Mul(xBytes: Uint8Array, yBytes: Uint8Array): Uint8Array {
-  let x = toBigIntBE(xBytes);
+export function gf128Mul(xBytes: Uint8Array, yBytes: Uint8Array): Uint8Array {
+  const x = toBigIntBE(xBytes);
   let y = toBigIntBE(yBytes);
   let z = 0n;
 
@@ -91,16 +99,16 @@ export async function computeGhash(ciphertextHex: string, keyHex?: string): Prom
   const key = keyHex ? hexToBytes(keyHex) : crypto.getRandomValues(new Uint8Array(16));
   const h = await aesEncryptBlockWebCrypto(key, new Uint8Array(BLOCK_SIZE));
 
-  let y: Uint8Array<ArrayBufferLike> = new Uint8Array(BLOCK_SIZE);
+  let y: Uint8Array = new Uint8Array(BLOCK_SIZE);
   const steps: string[] = [];
 
   for (const block of chunk16(c)) {
-    y = gf128Mul(xor16(y as any, block as any), h as any) as any;
+    y = gf128Mul(xor16(y, block), h);
     steps.push(bytesToHex(y));
   }
 
   const lengthBlock = toBlockLength(0, c.length);
-  y = gf128Mul(xor16(y as any, lengthBlock as any), h as any) as any;
+  y = gf128Mul(xor16(y, lengthBlock), h);
   steps.push(bytesToHex(y));
 
   return {
@@ -116,42 +124,76 @@ function gfPow2(x: Uint8Array): Uint8Array {
 
 function gfInv(x: Uint8Array): Uint8Array {
   let exp = (1n << 128n) - 2n;
-  let base: Uint8Array<ArrayBufferLike> = x;
-  let result: Uint8Array<ArrayBufferLike> = new Uint8Array(BLOCK_SIZE);
+  let base: Uint8Array = x;
+  let result: Uint8Array = new Uint8Array(BLOCK_SIZE);
   result[0] = 0x80;
 
   while (exp > 0n) {
-    if ((exp & 1n) === 1n) result = gf128Mul(result as any, base as any) as any;
+    if ((exp & 1n) === 1n) result = gf128Mul(result, base);
     base = gfPow2(base);
     exp >>= 1n;
   }
   return result;
 }
 
-export function runGhashReuseAttackDemo(): GhashReuseDemo {
-  const h = hexToBytes('66e94bd4ef8a2c3b884cfa59ca342b2e');
-  const c1 = hexToBytes('0388dace60b6a392f328c2b971b2fe78');
-  const c2 = hexToBytes('42831ec2217774244b7221b784d0d49c');
+/**
+ * Live Forbidden Attack. Nothing here is hard-coded: we generate a fresh AES
+ * key each run, derive the real hash subkey H = E_K(0^128) via WebCrypto, and
+ * pick two random single-block ciphertexts. Reusing the same nonce means both
+ * are authenticated with the same H, so the attacker sees
+ *   T1 = C1 · H,   T2 = C2 · H   (single-block GHASH, no length block).
+ * Because GHASH is linear over GF(2^128):
+ *   ΔT = T1 ⊕ T2 = (C1 ⊕ C2) · H = ΔC · H,   so   H = ΔT · ΔC⁻¹.
+ * We then forge a tag for a fresh target ciphertext and the "server" (which
+ * still holds the true H) independently confirms the forgery is accepted.
+ */
+export async function runGhashReuseAttackDemo(): Promise<GhashReuseDemo> {
+  const key = crypto.getRandomValues(new Uint8Array(16));
+  const h = await aesEncryptBlockWebCrypto(key, new Uint8Array(BLOCK_SIZE));
 
+  const c1 = crypto.getRandomValues(new Uint8Array(BLOCK_SIZE));
+  const c2 = crypto.getRandomValues(new Uint8Array(BLOCK_SIZE));
+
+  // Observed authentication tags for the two nonce-reusing messages.
   const t1 = gf128Mul(c1, h);
   const t2 = gf128Mul(c2, h);
 
+  // Attacker's algebra — recover H from the two observations alone.
   const deltaC = xor16(c1, c2);
   const deltaT = xor16(t1, t2);
-
   const recoveredH = gf128Mul(deltaT, gfInv(deltaC));
 
-  const c3 = hexToBytes('feedfacedeadbeeffeedfacedeadbeef');
-  const forgedTag = gf128Mul(c3, recoveredH);
-  const realTag = gf128Mul(c3, h);
+  // Forge a tag for a brand-new ciphertext using only the recovered H.
+  const target = crypto.getRandomValues(new Uint8Array(BLOCK_SIZE));
+  const forgedTag = gf128Mul(target, recoveredH);
+
+  // The server still holds the *true* H and computes the genuine tag; if the
+  // forgery matches, the attack is verified end-to-end (not self-graded).
+  const genuineTag = gf128Mul(target, h);
+  const serverAccepts = ctEq16(forgedTag, genuineTag);
 
   return {
+    c1Hex: bytesToHex(c1),
+    c2Hex: bytesToHex(c2),
+    t1Hex: bytesToHex(t1),
+    t2Hex: bytesToHex(t2),
     deltaCHex: bytesToHex(deltaC),
     deltaTHex: bytesToHex(deltaT),
     recoveredHHex: bytesToHex(recoveredH),
-    forgedValid: bytesToHex(forgedTag) === bytesToHex(realTag),
-    note: 'Nonce reuse leaks linear equations in GHASH; with enough structure, H can be solved and forgeries follow.'
+    hMatchesTrue: ctEq16(recoveredH, h),
+    targetCiphertextHex: bytesToHex(target),
+    forgedTagHex: bytesToHex(forgedTag),
+    serverAccepts,
+    forgedValid: serverAccepts,
+    note: 'H was derived live from a fresh AES key; nonce reuse gives ΔT = ΔC·H, so H = ΔT·ΔC⁻¹ and forgeries follow for any ciphertext.'
   };
+}
+
+function ctEq16(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i += 1) diff |= a[i] ^ b[i];
+  return diff === 0;
 }
 
 export async function verifyGhash(ciphertextHex: string, keyHex: string, candidateTagHex: string): Promise<boolean> {

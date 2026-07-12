@@ -94,14 +94,22 @@ function makeNaiveCompareOracle(tagLength: number) {
   return {
     trueTag,
     queries: () => queries,
+    // Models a non-constant-time `memcmp(candidate, trueTag)` against the
+    // stored tag: the loop exits at the first differing byte, so the number
+    // of iterations (the timing signal) equals the prefix-match length + 1
+    // for a mismatch, and the full candidate length for a total prefix match.
+    // The attacker submits a candidate of exactly the length decided so far.
     measure(candidate: Uint8Array): number {
       queries += 1;
+      const n = Math.min(candidate.length, trueTag.length);
       let units = 0;
-      for (let i = 0; i < trueTag.length; i += 1) {
+      for (let i = 0; i < n; i += 1) {
         units += 1;
-        if (trueTag[i] !== candidate[i]) break;
+        if (candidate[i] !== trueTag[i]) return units;
       }
-      return units;
+      // Every submitted byte matched: the comparator ran the full length,
+      // which is the maximal timing signal for this prefix.
+      return units + 1;
     }
   };
 }
@@ -120,7 +128,12 @@ export async function recoverTagByTimingAttack(
     let bestUnits = -1;
     for (let candidate = 0; candidate < 256; candidate += 1) {
       recovered[i] = candidate;
-      const units = oracle.measure(recovered);
+      // Probe only the recovered prefix plus this guessed byte. Trailing
+      // (not-yet-recovered) bytes are omitted so they cannot coincidentally
+      // extend the match and mask which guess actually matched at position i.
+      // This mirrors a real remote-timing attack, where the attacker submits
+      // exactly the bytes decided so far and reads the prefix-match signal.
+      const units = oracle.measure(recovered.subarray(0, i + 1));
       if (units > bestUnits) {
         bestUnits = units;
         bestByte = candidate;

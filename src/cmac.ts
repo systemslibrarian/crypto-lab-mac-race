@@ -125,11 +125,11 @@ async function computeCmacBytes(messageBytes: Uint8Array, keyInput: string): Pro
   const paddedLastBlock = complete ? lastRaw : padBlock(lastRaw);
   const finalXorBlock = xorBlock(paddedLastBlock, complete ? k1 : k2);
 
-  let c: Uint8Array<ArrayBufferLike> = new Uint8Array(BLOCK_SIZE);
+  let c: Uint8Array = new Uint8Array(BLOCK_SIZE);
   const chain: string[] = [];
 
   for (let i = 0; i < lastIndex; i += 1) {
-    c = (await aesBlockEncrypt(keyBytes as any, xorBlock(c as any, blocks[i] as any) as any)) as any;
+    c = await aesBlockEncrypt(keyBytes, xorBlock(c, blocks[i]));
     chain.push(toHex(c));
   }
 

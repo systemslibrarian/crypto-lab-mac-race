@@ -24,7 +24,7 @@ The demo lets you run six interactive panels: HMAC, CMAC, Poly1305, GHASH, a SHA
 ## What Can Go Wrong
 
 - Prefix-MAC length extension with bare SHA-256(secret || message): an attacker can forge a valid MAC for extended data without knowing the secret, which is demonstrated in the length-extension panel.
-- Poly1305 one-time key reuse: reusing the same one-time key across messages leaks enough structure to enable tag forgery, which breaks message authenticity.
+- Poly1305 one-time key reuse: reusing the same one-time key across messages turns two tags into linear equations in the key element `r`, which breaks message authenticity. (The in-app attack narrows `r` to a 16-bit search so the algebra runs live in the browser — this is a disclosed teaching simplification of the search size; recovering full ~106-bit `r` from only two tags is not tractable because each single-block accumulator is reduced mod 2^130−5.)
 - GHASH nonce reuse in GCM contexts: because GHASH is linear over GF(2^128), nonce reuse can expose relationships that permit forgery and broader AEAD failure.
 - Non-constant-time MAC comparison: byte-by-byte early-exit checks leak timing information that helps attackers recover or validate tag bytes incrementally.
 - CMAC implementation mistakes (subkey/padding/final-block handling): incorrect K1/K2 derivation or final block processing can produce incompatible or insecure tags.
@@ -45,6 +45,25 @@ cd crypto-lab-mac-race
 npm install
 npm run dev
 ```
+
+## Tests
+
+Correctness is gated by a runnable unit suite (Vitest), not just the in-browser
+self-tests:
+
+```bash
+npm test        # KAT / property / forgery-rejection unit tests
+npm run test:a11y  # axe-core WCAG A/AA gate (Playwright)
+```
+
+The suite covers RFC 4231 HMAC vectors, NIST SP 800-38B AES-CMAC, RFC 8439
+Poly1305, GHASH GF(2^128) vectors and field laws, the from-scratch SHA-256
+core cross-checked against WebCrypto, and each attack end-to-end: the GHASH
+Forbidden Attack recovers a live-derived `H` and the "server" (holding the true
+`H`) confirms the forgery; the length-extension forgery is verified against a
+full re-hash and rejected on a wrong length guess; the Poly1305 reuse forgery
+must match the tag the real key produces. Both `npm test` and the a11y gate run
+in CI before every Pages deploy.
 
 ## Related Demos
 
