@@ -219,17 +219,21 @@ export function renderApp(container: HTMLElement): void {
   container.innerHTML = `
     <div class="page" aria-label="MAC Race demo root">
       <a class="skip-link" href="#main-content" aria-label="Skip to main content">Skip to main content</a>
-      <header class="hero" aria-label="Header section">
-        <span class="chip chip-category" aria-label="Category chip">MAC</span>
-        <button
-          id="theme-toggle"
-          class="theme-toggle"
-          aria-label="Switch to light mode"
-          style="position: absolute; top: 0; right: 0;"
-        >🌙</button>
-        <h1>MAC Race</h1>
-        <p class="subtitle">Construction, misuse resistance, and real attack demonstrations for modern Message Authentication Codes.</p>
-        <p class="chip-row" aria-label="Primitive chips">HMAC-SHA-256 · HMAC-SHA-512 · AES-CMAC · Poly1305 · GHASH</p>
+      <button
+        id="theme-toggle"
+        class="theme-toggle"
+        aria-label="Switch to light mode"
+      >🌙</button>
+      <header class="cl-hero">
+        <div class="cl-hero-main">
+          <h1 class="cl-hero-title">MAC Race</h1>
+          <p class="cl-hero-sub">HMAC · AES-CMAC · Poly1305 · GHASH</p>
+          <p class="cl-hero-desc">Build HMAC, AES-CMAC, Poly1305, and GHASH tags side by side, then trigger the misuse modes — length extension, one-time-key reuse, nonce reuse, and non-constant-time comparison — that separate a safe MAC from a broken one.</p>
+        </div>
+        <aside class="cl-hero-why" aria-label="Why it matters">
+          <span class="cl-hero-why-label">WHY IT MATTERS</span>
+          <p class="cl-hero-why-text">A MAC is the line between an authenticated message and a forged one. The classic disasters — Flickr's length-extension forgery, AEAD nonce reuse leaking the auth key, tag comparison leaking timing — came not from weak math but from misusing the primitive.</p>
+        </aside>
       </header>
 
       <section class="tour" aria-label="Guided tour">
