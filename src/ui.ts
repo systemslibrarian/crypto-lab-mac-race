@@ -91,6 +91,87 @@ function renderBitDiffGrid(container: HTMLElement, aHex: string, bHex: string, c
   grid.setAttribute('aria-label', label.textContent);
 }
 
+// Render a single 128-bit row as 128 tiny cells (set bits filled).
+function bitRow(hex: string, cssClass: string): HTMLElement {
+  const bytes = hexToBytes(hex);
+  const row = document.createElement('div');
+  row.className = `bitrow ${cssClass}`;
+  for (let i = 0; i < 16; i += 1) {
+    const byte = bytes[i] ?? 0;
+    for (let bit = 7; bit >= 0; bit -= 1) {
+      const cell = document.createElement('span');
+      cell.className = 'bitrow-cell';
+      if (((byte >> bit) & 1) === 1) cell.classList.add('bitrow-on');
+      row.appendChild(cell);
+    }
+  }
+  return row;
+}
+
+// Visualize T1 XOR T2 = (C1 XOR C2)·H as three stacked 128-bit bit-rows on each
+// side of the equation, so the learner literally sees the shared H term cancel
+// out under XOR and the two sides land on identical bit patterns.
+function renderGhashLinearity(
+  container: HTMLElement,
+  t1Hex: string,
+  t2Hex: string,
+  deltaTHex: string,
+  c1Hex: string,
+  c2Hex: string,
+  deltaCHex: string
+): void {
+  container.textContent = '';
+
+  const makeBlock = (
+    labelHtml: string,
+    aLabel: string,
+    aHex: string,
+    bLabel: string,
+    bHex: string,
+    resultLabel: string,
+    resultHex: string
+  ): HTMLElement => {
+    const block = document.createElement('div');
+    block.className = 'linviz-block';
+    const cap = document.createElement('p');
+    cap.className = 'linviz-cap';
+    cap.innerHTML = labelHtml;
+    block.appendChild(cap);
+    const grid = document.createElement('div');
+    grid.className = 'linviz-grid';
+    const addLine = (name: string, hex: string, cls: string, op?: string): void => {
+      const opCell = document.createElement('span');
+      opCell.className = 'linviz-op';
+      opCell.textContent = op ?? '';
+      opCell.setAttribute('aria-hidden', 'true');
+      const nameCell = document.createElement('span');
+      nameCell.className = 'linviz-name';
+      nameCell.textContent = name;
+      grid.append(opCell, nameCell, bitRow(hex, cls));
+    };
+    addLine(aLabel, aHex, 'bitrow-t');
+    addLine(bLabel, bHex, 'bitrow-t', '⊕');
+    addLine(resultLabel, resultHex, 'bitrow-delta', '=');
+    block.appendChild(grid);
+    return block;
+  };
+
+  const left = makeBlock(
+    'Left side: <code>T1 ⊕ T2</code>',
+    'T1', t1Hex, 'T2', t2Hex, 'T1⊕T2', deltaTHex
+  );
+  const right = makeBlock(
+    'Right side: <code>(C1 ⊕ C2)</code>, then ×H',
+    'C1', c1Hex, 'C2', c2Hex, 'C1⊕C2', deltaCHex
+  );
+
+  const eq = document.createElement('p');
+  eq.className = 'linviz-equals';
+  eq.innerHTML = 'The shared <code>·H</code> factor is identical in T1 and T2, so it survives on both sides. XORing gives <code>T1⊕T2 = (C1⊕C2)·H</code> — one equation, one unknown H. Invert <code>(C1⊕C2)</code> in the field and <strong>H falls out</strong>.';
+
+  container.append(left, right, eq);
+}
+
 function hexToBytes(hex: string): Uint8Array {
   const clean = hex.toLowerCase().replace(/[^0-9a-f]/g, '');
   const out = new Uint8Array(Math.floor(clean.length / 2));
@@ -236,6 +317,49 @@ export function renderApp(container: HTMLElement): void {
         </aside>
       </header>
 
+      <section class="intro-card" aria-labelledby="intro-title">
+        <div class="intro-text">
+          <h2 id="intro-title">What is a MAC?</h2>
+          <p class="intro-lede">A <strong>Message Authentication Code (MAC)</strong> is a short tag computed from a message <em>and</em> a secret key. Send the message with its tag; the receiver — who shares the key — recomputes the tag and accepts only if it matches. Change one byte of the message and the tag no longer matches, so the forgery is <strong>rejected</strong>.</p>
+          <p class="intro-why">
+            <span class="intro-q">Why can't I just hash the message?</span>
+            A plain hash <code>H(message)</code> has no secret, so anyone can recompute it — it proves the message was not <em>corrupted</em>, not that it came from someone holding the key. A MAC mixes in a key the attacker does not have. (Naively stitching the key in as <code>H(secret ∥ message)</code> is <em>also</em> broken — that is the length-extension trap in Lesson 2.)
+          </p>
+        </div>
+        <figure class="mac-anim" aria-label="Animation: a message and secret key flow into a MAC function that emits a fixed-size tag; the receiver accepts a matching tag but rejects a tampered message">
+          <div class="mac-stage">
+            <div class="mac-inputs">
+              <span class="mac-token mac-msg">message</span>
+              <span class="mac-plus" aria-hidden="true">+</span>
+              <span class="mac-token mac-key">secret key</span>
+            </div>
+            <span class="mac-arrow" aria-hidden="true">→</span>
+            <div class="mac-box" aria-hidden="true">MAC</div>
+            <span class="mac-arrow" aria-hidden="true">→</span>
+            <span class="mac-token mac-tag">tag</span>
+          </div>
+          <div class="mac-stage mac-recv">
+            <div class="mac-recv-row mac-recv-ok">
+              <span class="mac-token mac-msg">message</span>
+              <span class="mac-token mac-tag">tag</span>
+              <span class="mac-arrow" aria-hidden="true">→</span>
+              <span class="mac-token mac-recv-box">recompute&nbsp;&amp;&nbsp;compare</span>
+              <span class="mac-arrow" aria-hidden="true">→</span>
+              <span class="mac-verdict-chip mac-accept">✓ ACCEPTED</span>
+            </div>
+            <div class="mac-recv-row mac-recv-bad">
+              <span class="mac-token mac-msg mac-tampered">message<span class="mac-tamper-mark">✎</span></span>
+              <span class="mac-token mac-tag">tag</span>
+              <span class="mac-arrow" aria-hidden="true">→</span>
+              <span class="mac-token mac-recv-box">recompute&nbsp;&amp;&nbsp;compare</span>
+              <span class="mac-arrow" aria-hidden="true">→</span>
+              <span class="mac-verdict-chip mac-reject">✗ REJECTED</span>
+            </div>
+          </div>
+          <figcaption class="mac-caption">Attacker (no key) alters the message but cannot recompute a matching tag, so the receiver rejects it.</figcaption>
+        </figure>
+      </section>
+
       <section class="tour" aria-label="Guided tour">
         <div class="tour-head">
           <div>
@@ -273,6 +397,7 @@ export function renderApp(container: HTMLElement): void {
 
           <div class="bitdiff-section">
             <p class="note"><strong>Avalanche:</strong> flip one bit of the message or one bit of the key — watch ~50% of output bits change.</p>
+            <p class="note note-why"><strong>Why ~50% matters for a MAC:</strong> if flipping one message bit only changed a few tag bits, an attacker could nudge a message toward a target tag and steer forgeries. A ~50% flip means the tag is <em>unpredictable</em> — no local edit gives the attacker any handle on the output, which is exactly the security property a MAC needs.</p>
             <div id="hmac-bitdiff-msg" class="bitdiff-block"></div>
             <div id="hmac-bitdiff-key" class="bitdiff-block"></div>
           </div>
@@ -287,7 +412,7 @@ export function renderApp(container: HTMLElement): void {
             </div>
           </div>
 
-          <p class="note">FIPS 198-1: HMAC uses nested hashing with ipad/opad, so length extension against bare SHA-256 does not apply.</p>
+          <p class="note">${gloss('FIPS 198-1', 'US federal standard (NIST) that specifies HMAC.')}: HMAC uses nested hashing with ${gloss('ipad/opad', 'two fixed one-byte patterns (0x36 and 0x5c) repeated to a block, XORed with the key for the inner and outer hash so the two hash passes use different keyed inputs.')}, so length extension against bare SHA-256 does not apply.</p>
 
           <details class="source-toggle"><summary>Show implementation</summary><pre class="src">${escapeHtml(HMAC_SRC)}</pre></details>
         </section>
@@ -340,7 +465,7 @@ export function renderApp(container: HTMLElement): void {
 
           <div class="attack-pane" aria-label="Poly1305 one-time key reuse attack">
             <h3>You are the attacker</h3>
-            <p class="note">A buggy server reused the <em>same</em> one-time key for two invoice messages. The two tags are linear equations in <code>r</code>: <code>tag = (m·r mod 2¹³⁰⁻⁵ + s) mod 2¹²⁸</code>. Recover <code>r</code> and forge a new invoice.</p>
+            <p class="note">A buggy server reused the <em>same</em> one-time key for two invoice messages. The two tags are linear equations in the ${gloss('clamped r', "half of the Poly1305 one-time key, with 22 specific bits forced to 0 ('clamped') so the field arithmetic stays fast and side-channel-safe; the other half is the additive value s.")} value <code>r</code>: <code>tag = (m·r mod 2¹³⁰⁻⁵ + s) mod 2¹²⁸</code>. Recover <code>r</code> and forge a new invoice.</p>
             <p class="note"><strong>Honest disclosure:</strong> real Poly1305 <code>r</code> is a ~106-bit clamped value, and each single-block accumulator is reduced mod 2¹³⁰⁻⁵ by a ~115-bit quotient the attacker never sees — so recovering <code>r</code> from just two tags is <em>not</em> tractable. To make the algebra runnable live in your browser this demo constrains <code>r</code> to 16 bits (so <code>m·r &lt; 2¹³⁰⁻⁵</code> and the reduction vanishes). The forgery it produces is genuinely valid against the real key; the <em>simplification is only the size of the search</em>. Generic Poly1305 reuse is catastrophic but not literally 16-bit-breakable.</p>
             <div class="button-row">
               <button id="poly-attack" aria-label="Run Poly1305 key reuse attack">Run reuse attack →</button>
@@ -382,10 +507,18 @@ export function renderApp(container: HTMLElement): void {
           <div class="attack-pane" aria-label="GHASH nonce reuse attack">
             <h3>You are the attacker</h3>
             <p class="note">Two ciphertexts encrypted under the <em>same</em> AES-GCM nonce share the same hash subkey H. With a single delta you can solve for H and forge tags for any other ciphertext.</p>
+
+            <div class="linviz" aria-label="Why nonce reuse leaks H: the linear algebra collapses">
+              <p class="linviz-lede"><strong>Why does reuse leak H?</strong> Because a single-block tag is just <code>T = C · H</code> and the field is ${gloss('linear', 'f is linear when f(A) XOR f(B) = f(A XOR B). Multiplication by a fixed H in GF(2^128) is linear, so XORing two tags equals the tag of the XORed ciphertexts.')}. Watch the two tags XOR together: everywhere the H term is <em>identical</em>, XOR cancels it — until only <code>(C1 ⊕ C2)·H</code> is left, and H is the one unknown you can now solve for.</p>
+              <div id="ghash-linviz-rows" class="linviz-rows" role="img" aria-label="Bit rows showing T1 XOR T2 equals (C1 XOR C2) times H, with the shared H term cancelling under XOR">
+                <p class="note linviz-idle">Run the attack below to watch the algebra collapse on the real bits.</p>
+              </div>
+            </div>
+
             <div class="button-row">
               <button id="ghash-attack" aria-label="Run GHASH nonce reuse attack">Run nonce reuse attack →</button>
             </div>
-            <pre id="ghash-attack-output" class="hex" role="status" aria-live="polite" aria-label="GHASH attack output"></pre>
+            <pre id="ghash-attack-output" class="hex" role="status" aria-live="polite" tabindex="0" aria-label="GHASH attack output"></pre>
           </div>
 
           <div class="verifier" aria-label="GHASH server verifier">
@@ -401,7 +534,7 @@ export function renderApp(container: HTMLElement): void {
             <strong>🔓 Forbidden Attack (Böck, Zauner, Devlin — 2016):</strong> a scan of the public web found 184 HTTPS servers and IoT devices reusing GCM nonces. Researchers extracted authentication keys and demonstrated full message forgery over real TLS.
           </div>
 
-          <p class="note">NIST SP 800-38D: GHASH is linear in GF(2^128). Reusing a GCM nonce is catastrophic.</p>
+          <p class="note">NIST SP 800-38D: GHASH is linear in ${gloss('GF(2^128)', 'a finite field of 2^128 elements: 128-bit blocks where "add" is bitwise XOR and "multiply" is polynomial multiplication modulo a fixed irreducible polynomial. "Linear" means GHASH(A) XOR GHASH(B) = GHASH(A XOR B).')}. Reusing a GCM nonce is catastrophic.</p>
 
           <details class="source-toggle"><summary>Show attack implementation</summary><pre class="src">${escapeHtml(GHASH_SRC)}</pre></details>
         </section>
@@ -444,7 +577,31 @@ export function renderApp(container: HTMLElement): void {
             <div class="button-row">
               <button id="le-forge" aria-label="Forge a length-extended tag">Forge tag</button>
             </div>
-            <pre id="le-forge-output" class="hex">(capture, then forge)</pre>
+
+            <div id="le-layout" class="le-layout" aria-label="Forged message layout" hidden>
+              <p class="le-layout-cap">What the server actually hashes — <code>SHA-256(secret ∥ forged bytes)</code>:</p>
+              <div class="le-blocks">
+                <span class="le-seg le-seg-secret" title="Unknown to the attacker — only its LENGTH must be guessed">
+                  <span class="le-seg-name">secret</span>
+                  <span class="le-seg-detail">??? (length is the only unknown)</span>
+                </span>
+                <span class="le-seg le-seg-msg">
+                  <span class="le-seg-name">original message</span>
+                  <span class="le-seg-detail" id="le-seg-msg-detail">comment=10&amp;uid=7</span>
+                </span>
+                <span class="le-seg le-seg-glue">
+                  <span class="le-seg-name">glue padding</span>
+                  <span class="le-seg-detail" id="le-seg-glue-detail">\x80\x00…len</span>
+                </span>
+                <span class="le-seg le-seg-append">
+                  <span class="le-seg-name">appended</span>
+                  <span class="le-seg-detail" id="le-seg-append-detail">&amp;admin=true</span>
+                </span>
+              </div>
+              <p class="note le-layout-why">The attacker never learns the <span class="le-key-secret">grey secret</span> — they resume SHA-256 from the <em>published tag</em> (which IS the hash's internal state after the secret+message+glue) and hash only the <span class="le-key-append">append</span> onto it. The <span class="le-key-glue">glue</span> is SHA-256's own <code>\x80 00…</code> length padding for the original block; guessing the secret's <strong>length</strong> is the sole thing that must be brute-forced.</p>
+            </div>
+
+            <pre id="le-forge-output" class="hex" tabindex="0">(capture, then forge)</pre>
           </div>
 
           <div class="verifier">
@@ -485,7 +642,7 @@ export function renderApp(container: HTMLElement): void {
               <caption class="sr-only">MAC primitive comparison: construction, key size, tag size, PQ resistance, and use case</caption>
               <thead><tr><th>Primitive</th><th>Construction</th><th>Key</th><th>Tag</th><th>PQ</th><th>Use case</th></tr></thead>
               <tbody>
-                <tr><td>HMAC-SHA-256</td><td>Hash (Merkle-Damgard wrapped)</td><td>Any secret</td><td>256b</td><td>No</td><td>General API auth</td></tr>
+                <tr><td>HMAC-SHA-256</td><td>Hash (${gloss('Merkle-Damgard', 'the block-by-block construction behind SHA-1/SHA-2: each block updates a running internal state, and the final state IS the output digest — which is what makes bare prefix-hashes extendable. HMAC wraps this so the leaked state cannot be resumed.')} wrapped)</td><td>Any secret</td><td>256b</td><td>No</td><td>General API auth</td></tr>
                 <tr><td>HMAC-SHA-512</td><td>Hash</td><td>Any secret</td><td>512b</td><td>No</td><td>Long-term integrity tokens</td></tr>
                 <tr><td>AES-256-CMAC</td><td>Block cipher</td><td>256b AES</td><td>128b</td><td>No</td><td>FIPS/NIST contexts</td></tr>
                 <tr><td>Poly1305</td><td>Polynomial mod 2^130-5</td><td>256b one-time</td><td>128b</td><td>No</td><td>ChaCha20-Poly1305</td></tr>
@@ -508,8 +665,9 @@ export function renderApp(container: HTMLElement): void {
           <p id="timing-summary" class="note"></p>
 
           <div class="attack-pane">
-            <h3>Real byte-by-byte tag recovery</h3>
-            <p class="note">A simulated server holds a random 16-byte tag and compares submitted candidates with <code>naiveEqual</code>. The attacker submits 256 candidates per byte position and keeps whichever produced the longest prefix-match time — recovering the entire tag without ever knowing the secret.</p>
+            <h3>Byte-by-byte tag recovery</h3>
+            <p class="disclosure-banner" role="note"><strong>How this oracle measures "time":</strong> single-shot wall-clock timing in a browser is far too noisy to read one tag byte. So this demo's oracle reports the <em>prefix-match length</em> directly, as an honest stand-in for "the timing signal you would get after averaging many samples." The <em>attack logic</em> — try all 256 values per position, keep the one that matches furthest, move to the next byte — is exactly the real technique; only the noise-free signal is simulated.</p>
+            <p class="note">A simulated server holds a random 16-byte tag and compares submitted candidates with <code>naiveEqual</code>. The attacker submits 256 candidates per byte position and keeps whichever the oracle reports as the longest prefix match — recovering the entire tag without ever knowing the secret.</p>
             <div class="button-row">
               <label for="recovery-bytes">Bytes to recover:</label>
               <input id="recovery-bytes" type="number" min="1" max="16" value="8" aria-label="Number of bytes to recover" style="width: 5rem; min-height: 2rem;" />
@@ -567,6 +725,15 @@ export function renderApp(container: HTMLElement): void {
   wireGuidedTour();
 
   renderTimingRows();
+}
+
+// Inline glossary term: renders `term` with a dotted underline and an
+// accessible tooltip (definition) reachable by hover OR keyboard focus.
+// The definition text is also exposed to assistive tech via aria-label.
+function gloss(term: string, definition: string): string {
+  const safeTerm = escapeHtml(term);
+  const safeDef = escapeHtml(definition);
+  return `<span class="gloss" tabindex="0" role="note" aria-label="${safeTerm}: ${safeDef}"><span class="gloss-term">${safeTerm}</span><span class="gloss-pop" aria-hidden="true">${safeDef}</span></span>`;
 }
 
 function escapeHtml(s: string): string {
@@ -783,6 +950,15 @@ function wireGhashPanel(): void {
     try {
       const attack = await runGhashReuseAttackDemo();
       lastAttack = attack;
+      renderGhashLinearity(
+        byId<HTMLElement>('ghash-linviz-rows'),
+        attack.t1Hex,
+        attack.t2Hex,
+        attack.deltaTHex,
+        attack.c1Hex,
+        attack.c2Hex,
+        attack.deltaCHex
+      );
       byId<HTMLElement>('ghash-attack-output').textContent =
         `Live H = E_K(0^128) from a fresh random AES key (hidden from attacker).\n` +
         `Observed under reused nonce:\n` +
@@ -871,6 +1047,18 @@ function wireLengthExtensionPanel(): void {
         rawTagHex: result.forgedRawTagHex,
         hmacAttemptHex: result.forgedHmacTagAttemptHex
       };
+      // Reveal + populate the structural layout diagram.
+      const layout = byId<HTMLElement>('le-layout');
+      layout.hidden = false;
+      byId<HTMLElement>('le-seg-msg-detail').textContent = captured.message;
+      byId<HTMLElement>('le-seg-append-detail').textContent = append;
+      // Glue is SHA-256 padding for (guessedSecretLength + message.length) bytes.
+      const gluePreview = result.forgedMessageVisible
+        .replace(captured.message, '')
+        .replace(append, '');
+      byId<HTMLElement>('le-seg-glue-detail').textContent =
+        (gluePreview || '\\x80\\x00…len').slice(0, 40) + ` (guessed secret = ${result.guessedSecretLength}B)`;
+
       byId<HTMLElement>('le-forge-output').textContent =
         `Guessed secret length: ${result.guessedSecretLength}\n` +
         `Forged message (visible): ${result.forgedMessageVisible}\n` +

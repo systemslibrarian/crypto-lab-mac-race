@@ -635,6 +635,375 @@ button.secondary {
   overflow-x: auto;
 }
 
+/* ===== "What is a MAC?" intro card ===== */
+.intro-card {
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  background: linear-gradient(140deg, color-mix(in srgb, var(--accent) 10%, var(--panel)), var(--panel));
+  padding: 1rem;
+  margin-bottom: 1rem;
+  display: grid;
+  gap: 1rem;
+}
+@media (min-width: 860px) {
+  .intro-card {
+    grid-template-columns: 1.05fr 1fr;
+    align-items: center;
+  }
+}
+.intro-card h2 {
+  margin-top: 0;
+}
+.intro-lede {
+  margin: 0 0 0.6rem 0;
+}
+.intro-why {
+  margin: 0;
+  color: var(--muted);
+  border-left: 3px solid color-mix(in srgb, var(--accent) 60%, var(--line));
+  padding-left: 0.75rem;
+}
+.intro-q {
+  display: block;
+  font-weight: 700;
+  color: var(--text);
+}
+.intro-card code {
+  font-family: "IBM Plex Mono", "Consolas", monospace;
+  background: color-mix(in srgb, var(--panel) 78%, black 22%);
+  padding: 0.05rem 0.3rem;
+  border-radius: 0.3rem;
+  font-size: 0.9em;
+}
+
+/* MAC flow animation */
+.mac-anim {
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: 0.85rem;
+  padding: 0.85rem;
+  background: color-mix(in srgb, var(--panel) 92%, black 8%);
+  display: grid;
+  gap: 0.7rem;
+}
+.mac-stage {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  justify-content: center;
+}
+.mac-inputs {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.mac-token {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.3rem 0.6rem;
+  border-radius: 0.55rem;
+  border: 1px solid var(--line);
+  font-family: "IBM Plex Mono", "Consolas", monospace;
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.mac-msg {
+  background: color-mix(in srgb, var(--panel) 86%, var(--muted) 14%);
+  color: var(--text);
+}
+.mac-key {
+  background: color-mix(in srgb, var(--warn) 30%, var(--panel));
+  border-color: color-mix(in srgb, var(--warn) 55%, var(--line));
+  color: var(--text);
+}
+.mac-tag {
+  background: color-mix(in srgb, var(--accent) 30%, var(--panel));
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--line));
+  color: var(--text);
+}
+.mac-plus,
+.mac-arrow {
+  color: var(--muted);
+  font-weight: 700;
+}
+.mac-box {
+  display: inline-grid;
+  place-items: center;
+  min-width: 3.2rem;
+  padding: 0.5rem 0.7rem;
+  border-radius: 0.6rem;
+  border: 1.5px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 18%, var(--panel));
+  font-family: "Space Grotesk", "Segoe UI", sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+.mac-recv {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.5rem;
+  border-top: 1px dashed var(--line);
+  padding-top: 0.7rem;
+}
+.mac-recv-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  justify-content: center;
+}
+.mac-recv-box {
+  background: color-mix(in srgb, var(--panel) 84%, var(--muted) 16%);
+}
+.mac-tampered {
+  position: relative;
+  text-decoration: line-through;
+  text-decoration-color: var(--bad);
+}
+.mac-tamper-mark {
+  color: var(--bad);
+  font-weight: 800;
+}
+.mac-verdict-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.3rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  font-family: "IBM Plex Mono", "Consolas", monospace;
+  font-weight: 700;
+  font-size: 0.78rem;
+}
+.mac-accept {
+  background: color-mix(in srgb, var(--accent) 35%, var(--panel));
+  border-color: var(--accent);
+  color: var(--text);
+}
+.mac-reject {
+  background: color-mix(in srgb, var(--bad) 35%, var(--panel));
+  border-color: var(--bad);
+  color: var(--text);
+}
+.mac-caption {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  text-align: center;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .mac-stage .mac-token,
+  .mac-stage .mac-box,
+  .mac-stage .mac-verdict-chip {
+    animation: macFlow 520ms ease-out both;
+  }
+  .mac-stage .mac-arrow { animation: macFade 520ms ease-out both; }
+  .mac-recv-ok .mac-verdict-chip { animation-delay: 0.35s; }
+  .mac-recv-bad .mac-verdict-chip { animation-delay: 0.55s; }
+}
+@keyframes macFlow {
+  from { opacity: 0; transform: translateX(-6px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes macFade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ===== Inline glossary term ===== */
+.gloss {
+  position: relative;
+  cursor: help;
+  border-radius: 0.2rem;
+}
+.gloss-term {
+  border-bottom: 1px dotted currentColor;
+}
+.gloss:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+.gloss-pop {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 0.4rem);
+  z-index: 40;
+  width: max(16rem, 100%);
+  max-width: 22rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--accent);
+  background: var(--bg-alt);
+  color: var(--text);
+  font-size: 0.82rem;
+  font-weight: 400;
+  line-height: 1.4;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 120ms ease-out;
+}
+.gloss:hover .gloss-pop,
+.gloss:focus .gloss-pop,
+.gloss:focus-within .gloss-pop,
+.gloss:focus-visible .gloss-pop {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* ===== GHASH linearity visualization ===== */
+.linviz {
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--line));
+  border-radius: 0.75rem;
+  padding: 0.75rem;
+  background: color-mix(in srgb, var(--panel) 92%, var(--accent) 8%);
+  display: grid;
+  gap: 0.6rem;
+}
+.linviz-lede { margin: 0; }
+.linviz-rows { display: grid; gap: 0.8rem; }
+.linviz-idle { margin: 0; }
+.linviz-block { display: grid; gap: 0.3rem; }
+.linviz-cap { margin: 0; font-size: 0.85rem; }
+.linviz-grid {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  gap: 0.25rem 0.4rem;
+  align-items: center;
+}
+.linviz-op {
+  font-family: "IBM Plex Mono", "Consolas", monospace;
+  font-weight: 700;
+  color: var(--muted);
+  text-align: center;
+  min-width: 1ch;
+}
+.linviz-name {
+  font-family: "IBM Plex Mono", "Consolas", monospace;
+  font-size: 0.78rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.bitrow {
+  display: grid;
+  grid-template-columns: repeat(64, 1fr);
+  gap: 1px;
+  height: 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 0.25rem;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--panel) 82%, black 18%);
+}
+.bitrow-cell { background: transparent; }
+.bitrow-cell.bitrow-on { background: var(--muted); }
+.bitrow-t .bitrow-cell.bitrow-on { background: color-mix(in srgb, var(--muted) 85%, var(--accent) 15%); }
+.bitrow-delta {
+  border-color: var(--accent);
+}
+.bitrow-delta .bitrow-cell.bitrow-on { background: var(--accent); }
+@media (prefers-reduced-motion: no-preference) {
+  .linviz-block .bitrow-delta { animation: deltaGlow 700ms ease-out both; animation-delay: 0.2s; }
+}
+@keyframes deltaGlow {
+  from { opacity: 0.2; transform: scaleY(0.5); }
+  to   { opacity: 1; transform: scaleY(1); }
+}
+.linviz-equals {
+  margin: 0;
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.5rem;
+  background: color-mix(in srgb, var(--accent) 14%, var(--panel));
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--line));
+  font-size: 0.88rem;
+}
+.linviz code,
+.linviz-equals code {
+  font-family: "IBM Plex Mono", "Consolas", monospace;
+  background: color-mix(in srgb, var(--panel) 78%, black 22%);
+  padding: 0.05rem 0.3rem;
+  border-radius: 0.3rem;
+}
+
+/* ===== Timing disclosure banner ===== */
+.disclosure-banner {
+  margin: 0;
+  padding: 0.6rem 0.75rem;
+  border-radius: 0.6rem;
+  border: 1px solid color-mix(in srgb, var(--warn) 55%, var(--line));
+  background: color-mix(in srgb, var(--warn) 16%, var(--panel));
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+/* ===== Length-extension forged layout ===== */
+.le-layout {
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  padding: 0.75rem;
+  background: color-mix(in srgb, var(--panel) 94%, black 6%);
+  display: grid;
+  gap: 0.55rem;
+}
+.le-layout-cap { margin: 0; font-size: 0.88rem; }
+.le-blocks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  align-items: stretch;
+}
+.le-seg {
+  flex: 1 1 auto;
+  min-width: 6rem;
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.45rem 0.55rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--line);
+  font-family: "IBM Plex Mono", "Consolas", monospace;
+}
+.le-seg-name { font-size: 0.8rem; font-weight: 700; }
+.le-seg-detail { font-size: 0.74rem; color: var(--text); opacity: 0.85; word-break: break-all; }
+.le-seg-secret {
+  background: repeating-linear-gradient(
+    45deg,
+    color-mix(in srgb, var(--panel) 88%, var(--muted) 12%),
+    color-mix(in srgb, var(--panel) 88%, var(--muted) 12%) 6px,
+    color-mix(in srgb, var(--panel) 78%, var(--muted) 22%) 6px,
+    color-mix(in srgb, var(--panel) 78%, var(--muted) 22%) 12px
+  );
+  border-style: dashed;
+  color: var(--text);
+}
+.le-seg-msg { background: color-mix(in srgb, var(--panel) 88%, var(--muted) 12%); }
+.le-seg-glue {
+  background: color-mix(in srgb, var(--warn) 26%, var(--panel));
+  border-color: color-mix(in srgb, var(--warn) 55%, var(--line));
+}
+.le-seg-append {
+  background: color-mix(in srgb, var(--bad) 24%, var(--panel));
+  border-color: color-mix(in srgb, var(--bad) 55%, var(--line));
+}
+.le-layout-why { font-size: 0.84rem; }
+.le-key-secret,
+.le-key-glue,
+.le-key-append {
+  font-weight: 700;
+  padding: 0.02rem 0.25rem;
+  border-radius: 0.25rem;
+}
+.le-key-secret { background: color-mix(in srgb, var(--muted) 16%, var(--panel)); }
+.le-key-glue { background: color-mix(in srgb, var(--warn) 22%, var(--panel)); }
+.le-key-append { background: color-mix(in srgb, var(--bad) 24%, var(--panel)); }
+
+.note-why {
+  border-left: 3px solid color-mix(in srgb, var(--accent) 55%, var(--line));
+  padding-left: 0.7rem;
+}
+
 /* BEGIN cl-hero standard — managed, keep in sync across fleet */
 /* Accent/tint/text colors mapped to this demo's theme vars: --muted (text-dim),
    --line (border), --accent, --text — passes axe contrast in dark + light. */

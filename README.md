@@ -6,6 +6,18 @@ Primitives: HMAC-SHA-256 · HMAC-SHA-512 · AES-CMAC · Poly1305 · GHASH
 
 crypto-lab-mac-race is a browser demo for HMAC-SHA-256, HMAC-SHA-512, AES-CMAC, Poly1305, and GHASH, plus attack panels that show where incorrect MAC constructions fail. These primitives are symmetric-key authentication mechanisms used to verify message integrity and origin authenticity, not to encrypt plaintext. The project focuses on how each construction behaves under correct and incorrect usage, including nonce/key reuse, length extension on a vulnerable prefix-MAC pattern, and timing leakage from naive comparison. The security model is symmetric authentication with shared secret material between parties.
 
+A newcomer starts at a "What is a MAC?" intro card — a one-sentence framing plus a small animation of a message and secret key flowing into a fixed-size tag, and an attacker who alters the message getting rejected — so the mental model is grounded before any primitive appears. A guided tour then walks the panels in pedagogical order. Field-math mechanisms are shown as pictures, not just hex: the GHASH panel animates `T1 ⊕ T2 = (C1 ⊕ C2)·H` as stacked 128-bit bit-rows so the shared `H` term visibly cancels under XOR, and the length-extension panel draws the forged message as labelled `[secret][message][glue padding][append]` segments with the secret greyed as unknown. First-use jargon (ipad/opad, Merkle-Damgard, clamped r, GF(2^128), FIPS 198-1) carries inline hover/focus definitions.
+
+## Exhibits
+
+1. **What is a MAC?** — intro card with a one-sentence definition, a "why can't I just hash the message?" answer, and an animated message + key → tag → accept/reject flow that grounds the whole page.
+2. **HMAC** (the safe default) — step-through of the ipad/opad nested construction, an avalanche bit-diff grid with a "why ~50% flip matters" security note, and a server verifier.
+3. **Length-extension attack** — capture a `SHA-256(secret ∥ msg)` tag, forge an extended tag without the secret, and see a labelled diagram of the forged message layout; a side-by-side HMAC server rejects the same attack.
+4. **CMAC** — NIST SP 800-38B subkey (K1/K2) derivation and final-block handling, step-by-step.
+5. **Poly1305** (one-time only) — reuse the one-time key across two messages to recover `r` and forge a tag, with a disclosed teaching simplification of the search size (the algebra is real and runs live).
+6. **GHASH** (linear in GF(2^128)) — the Forbidden Attack: nonce reuse leaks the hash subkey `H`, visualized as bit-rows where the linear algebra collapses under XOR.
+7. **MAC comparison + timing attack** — a primitive comparison table and a byte-by-byte tag recovery driven by a non-constant-time compare, with an on-screen banner disclosing that the oracle reports match-length directly as an honest stand-in for averaged timing.
+
 ## When to Use It
 
 - Use HMAC-SHA-256 or HMAC-SHA-512 for API request signing and token integrity because HMAC is designed to resist Merkle-Damgard length extension that breaks bare prefix-hash MACs.
