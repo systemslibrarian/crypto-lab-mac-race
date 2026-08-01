@@ -9,6 +9,12 @@
   --warn: #ffd166;
   --bad: #ff6b6b;
   --line: #29507a;
+  /* Control boundaries only (buttons, inputs, textareas, theme toggle). Those
+     controls are filled with washes of --panel that land at 1.07-1.32:1 against
+     the panel behind them, so the border is the sole boundary and WCAG 2.1 SC
+     1.4.11 requires 3:1. --line stays as-is for decorative rules (cards, chips,
+     tables, dividers). */
+  --line-strong: #3d78b6;
   --focus: #ffbf47;
 }
 
@@ -23,6 +29,7 @@
   --warn: #8a5b00;
   --bad: #b42318;
   --line: #b4c9e0;
+  --line-strong: #4e7fb6;
   --focus: #7a4b00;
 }
 
@@ -109,7 +116,7 @@ a {
 }
 
 button {
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   background: color-mix(in srgb, var(--accent) 22%, var(--panel));
   color: var(--text);
   padding: 0.65rem 0.9rem;
@@ -123,7 +130,7 @@ button {
   width: 2.6rem;
   height: 2.6rem;
   border-radius: 50%;
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   background: color-mix(in srgb, var(--panel) 80%, var(--accent) 20%);
   color: var(--text);
   padding: 0;
@@ -206,7 +213,7 @@ label {
 input,
 textarea {
   width: 100%;
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   border-radius: 0.65rem;
   padding: 0.65rem;
   background: color-mix(in srgb, var(--panel) 88%, black 12%);
