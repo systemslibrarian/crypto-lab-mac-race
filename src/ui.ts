@@ -626,7 +626,7 @@ export function renderApp(container: HTMLElement): void {
           </div>
 
           <div class="callout-cve">
-            <strong>🔓 Flickr API (2009):</strong> Flickr's signed request scheme used <code>md5(secret &#124;&#124; query)</code>. Researchers Duong and Rizzo (the Lucky 13 / BEAST team) demonstrated tag forgery via length extension and could call arbitrary signed API methods. Fixed by switching to HMAC.
+            <strong>🔓 Flickr API (2009):</strong> Flickr's signed request scheme used <code>md5(secret &#124;&#124; query)</code>. Researchers Duong and Rizzo (later of BEAST and CRIME) demonstrated tag forgery via length extension and could call arbitrary signed API methods. Fixed by switching to HMAC.
           </div>
 
           <details class="source-toggle"><summary>Show attack implementation</summary><pre class="src">${escapeHtml(LENGTHEXT_SRC)}</pre></details>
@@ -642,11 +642,11 @@ export function renderApp(container: HTMLElement): void {
               <caption class="sr-only">MAC primitive comparison: construction, key size, tag size, PQ resistance, and use case</caption>
               <thead><tr><th>Primitive</th><th>Construction</th><th>Key</th><th>Tag</th><th>PQ</th><th>Use case</th></tr></thead>
               <tbody>
-                <tr><td>HMAC-SHA-256</td><td>Hash (${gloss('Merkle-Damgard', 'the block-by-block construction behind SHA-1/SHA-2: each block updates a running internal state, and the final state IS the output digest — which is what makes bare prefix-hashes extendable. HMAC wraps this so the leaked state cannot be resumed.')} wrapped)</td><td>Any secret</td><td>256b</td><td>No</td><td>General API auth</td></tr>
-                <tr><td>HMAC-SHA-512</td><td>Hash</td><td>Any secret</td><td>512b</td><td>No</td><td>Long-term integrity tokens</td></tr>
-                <tr><td>AES-256-CMAC</td><td>Block cipher</td><td>256b AES</td><td>128b</td><td>No</td><td>FIPS/NIST contexts</td></tr>
-                <tr><td>Poly1305</td><td>Polynomial mod 2^130-5</td><td>256b one-time</td><td>128b</td><td>No</td><td>ChaCha20-Poly1305</td></tr>
-                <tr><td>GHASH</td><td>Polynomial mod x^128+x^7+x^2+x+1</td><td>128b subkey H</td><td>128b</td><td>No</td><td>AES-GCM internals</td></tr>
+                <tr><td>HMAC-SHA-256</td><td>Hash (${gloss('Merkle-Damgard', 'the block-by-block construction behind SHA-1/SHA-2: each block updates a running internal state, and the final state IS the output digest — which is what makes bare prefix-hashes extendable. HMAC wraps this so the leaked state cannot be resumed.')} wrapped)</td><td>Any secret</td><td>256b</td><td>Yes</td><td>General API auth</td></tr>
+                <tr><td>HMAC-SHA-512</td><td>Hash</td><td>Any secret</td><td>512b</td><td>Yes</td><td>Long-term integrity tokens</td></tr>
+                <tr><td>AES-256-CMAC</td><td>Block cipher</td><td>256b AES</td><td>128b</td><td>Yes</td><td>FIPS/NIST contexts</td></tr>
+                <tr><td>Poly1305</td><td>Polynomial mod 2^130-5</td><td>256b one-time</td><td>128b</td><td>Yes</td><td>ChaCha20-Poly1305</td></tr>
+                <tr><td>GHASH</td><td>Polynomial mod x^128+x^7+x^2+x+1</td><td>128b subkey H</td><td>128b</td><td>Yes</td><td>AES-GCM internals</td></tr>
               </tbody>
             </table>
           </div>
