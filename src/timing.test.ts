@@ -4,6 +4,7 @@ import {
   naiveEqual,
   recoverTagByTimingAttack,
   runTimingSelfTest,
+  summarizeTimingRows,
 } from './timing';
 
 const enc = new TextEncoder();
@@ -47,5 +48,22 @@ describe('timing-attack oracle byte recovery', () => {
     const result = await recoverTagByTimingAttack(16, undefined, 4);
     expect(result.bytesRecovered).toBe(4);
     expect(result.recoveredTagHex).toBe(result.trueTagHex.slice(0, 8));
+  });
+});
+
+describe('timing summary', () => {
+  it('states the conclusion derived from the measured spreads', () => {
+    const flatter = summarizeTimingRows([
+      { label: 'a', naiveMs: 1, constantMs: 4 },
+      { label: 'b', naiveMs: 8, constantMs: 5 },
+    ]);
+    expect(flatter).toContain('naive 7.000 ms; full-scan 1.000 ms');
+    expect(flatter).toContain('flatter in this run');
+
+    const noisy = summarizeTimingRows([
+      { label: 'a', naiveMs: 1, constantMs: 1 },
+      { label: 'b', naiveMs: 2, constantMs: 9 },
+    ]);
+    expect(noisy).toContain('Measurement noise outweighed');
   });
 });

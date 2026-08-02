@@ -55,3 +55,18 @@ test('no WCAG A/AA violations in light theme', async ({ page }) => {
   await revealEverything(page);
   await scan(page);
 });
+
+test('length-extension verdict reports the forged guess and keeps the secret hidden', async ({ page }) => {
+  await page.goto('.');
+  await page.locator('#le-capture').click();
+  await page.locator('#le-guess').fill('8');
+  await page.locator('#le-forge').click();
+  await expect(page.locator('#le-forge-output')).toContainText('Guessed secret length: 8');
+
+  // Moving the slider after forging must not rewrite the history of the
+  // attempt that is about to be verified.
+  await page.locator('#le-guess').fill('9');
+  await page.locator('#le-verify-raw').click();
+  await expect(page.locator('#le-summary')).toContainText('guess 8');
+  await expect(page.locator('#le-summary')).not.toContainText('actual length');
+});

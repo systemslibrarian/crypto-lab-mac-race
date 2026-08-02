@@ -6,7 +6,6 @@ import {
   ATTACKER_SECRET_LENGTH_RANGE,
   attemptForge,
   captureOriginalRequest,
-  getActualSecretLength,
   hmacServerVerify,
   rawServerVerify,
   regenerateDemoSecret
@@ -990,7 +989,7 @@ function wireGhashPanel(): void {
 
 function wireLengthExtensionPanel(): void {
   let captured: { message: string; rawMacHex: string; hmacMacHex: string } | null = null;
-  let forged: { messageBytes: Uint8Array; rawTagHex: string; hmacAttemptHex: string } | null = null;
+  let forged: { messageBytes: Uint8Array; rawTagHex: string; hmacAttemptHex: string; guessedSecretLength: number } | null = null;
 
   const guessSlider = byId<HTMLInputElement>('le-guess');
   const guessValueLabel = byId<HTMLSpanElement>('le-guess-value');
@@ -1016,7 +1015,7 @@ function wireLengthExtensionPanel(): void {
   });
 
   byId<HTMLButtonElement>('le-reset-secret').addEventListener('click', () => {
-    const newLen = regenerateDemoSecret();
+    regenerateDemoSecret();
     captured = null;
     forged = null;
     byId<HTMLElement>('le-raw-tag').textContent = '(rotated — capture again)';
@@ -1024,7 +1023,7 @@ function wireLengthExtensionPanel(): void {
     byId<HTMLElement>('le-forge-output').textContent = '(secret rotated; capture, then forge)';
     setVerdictIdle(byId<HTMLElement>('le-verdict-raw'), 'rotated — recapture');
     setVerdictIdle(byId<HTMLElement>('le-verdict-hmac'), 'rotated — recapture');
-    setStatus(`Secret rotated (new length ${newLen} bytes, hidden).`);
+    setStatus('Secret rotated to a new hidden length.');
   });
 
   byId<HTMLButtonElement>('le-forge').addEventListener('click', async () => {
@@ -1045,7 +1044,8 @@ function wireLengthExtensionPanel(): void {
       forged = {
         messageBytes: hexToBytes(result.forgedMessageHex),
         rawTagHex: result.forgedRawTagHex,
-        hmacAttemptHex: result.forgedHmacTagAttemptHex
+        hmacAttemptHex: result.forgedHmacTagAttemptHex,
+        guessedSecretLength: result.guessedSecretLength
       };
       // Reveal + populate the structural layout diagram.
       const layout = byId<HTMLElement>('le-layout');
@@ -1098,11 +1098,10 @@ function wireLengthExtensionPanel(): void {
   function updateLeSummary(rawOk: boolean | null, hmacOk: boolean | null): void {
     if (rawOk !== null) lastRaw = rawOk;
     if (hmacOk !== null) lastHmac = hmacOk;
-    const actual = getActualSecretLength();
-    const guessed = Number(guessSlider.value);
+    const guessed = forged?.guessedSecretLength;
     const parts: string[] = [];
-    if (lastRaw === true) parts.push(`✅ BROKEN server accepted the forgery (you guessed the secret length: ${guessed} = ${actual}).`);
-    if (lastRaw === false) parts.push(`❌ BROKEN server rejected — guess ${guessed} did not match actual length ${actual}. Try a different slider value.`);
+    if (lastRaw === true) parts.push(`✅ BROKEN server accepted the forgery made with secret-length guess ${guessed}; acceptance confirms that guess.`);
+    if (lastRaw === false) parts.push(`❌ BROKEN server rejected the forgery made with guess ${guessed}. The actual secret length remains hidden; forge again with a different guess.`);
     if (lastHmac === true) parts.push(`⚠️ SAFE server also accepted? That shouldn't happen — please report.`);
     if (lastHmac === false) parts.push(`🛡️ SAFE server rejected — HMAC is immune to this attack technique.`);
     byId<HTMLElement>('le-summary').textContent = parts.join(' ');

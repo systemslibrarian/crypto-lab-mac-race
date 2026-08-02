@@ -9,6 +9,16 @@ export type TimingDemo = {
   summary: string;
 };
 
+export function summarizeTimingRows(rows: TimingRow[]): string {
+  const spread = (values: number[]) => Math.max(...values) - Math.min(...values);
+  const naiveSpread = spread(rows.map((row) => row.naiveMs));
+  const constantSpread = spread(rows.map((row) => row.constantMs));
+  const comparison = constantSpread <= naiveSpread
+    ? 'The full-scan comparison was flatter in this run.'
+    : 'Measurement noise outweighed the expected shape in this run; repeat the measurement.';
+  return `Measured spread across mismatch positions: naive ${naiveSpread.toFixed(3)} ms; full-scan ${constantSpread.toFixed(3)} ms. ${comparison} JavaScript timing is not a constant-time guarantee.`;
+}
+
 function toBytes(text: string): Uint8Array {
   return new TextEncoder().encode(text);
 }
@@ -55,7 +65,7 @@ export function runTimingDemo(rounds = 50000): TimingDemo {
 
   return {
     rows,
-    summary: 'Naive comparison exits early and leaks prefix-match timing. Constant-time comparison keeps timing flatter.'
+    summary: summarizeTimingRows(rows)
   };
 }
 
