@@ -65,7 +65,7 @@ self-tests:
 
 ```bash
 npm test        # KAT / property / forgery-rejection unit tests
-npm run test:a11y  # axe-core WCAG A/AA gate (Playwright)
+npm run test:a11y  # browser gate (Playwright): on-screen claims + axe-core WCAG A/AA
 ```
 
 The suite covers RFC 4231 HMAC vectors, NIST SP 800-38B AES-CMAC, RFC 8439
@@ -74,8 +74,16 @@ core cross-checked against WebCrypto, and each attack end-to-end: the GHASH
 Forbidden Attack recovers a live-derived `H` and the "server" (holding the true
 `H`) confirms the forgery; the length-extension forgery is verified against a
 full re-hash and rejected on a wrong length guess; the Poly1305 reuse forgery
-must match the tag the real key produces. Both `npm test` and the a11y gate run
-in CI before every Pages deploy.
+must match the tag the real key produces.
+
+`e2e/claims.spec.ts` gates the *page* on the same standard: it drives the real
+panels and re-derives each verdict from what the page printed — the HMAC tag
+against its own step list, the bit-diff labels against the cells they drew, the
+GHASH deltas against the ciphertexts and tags beside them, the timing summary
+against the rows above it — and sweeps the attacker's whole 8..24-byte secret
+length search space, asserting exactly one guess forges a tag the broken server
+accepts while the HMAC server rejects every one. Both `npm test` and the browser
+gate run in CI before every Pages deploy.
 
 ## Related Demos
 

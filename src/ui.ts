@@ -990,6 +990,16 @@ function wireGhashPanel(): void {
 function wireLengthExtensionPanel(): void {
   let captured: { message: string; rawMacHex: string; hmacMacHex: string } | null = null;
   let forged: { messageBytes: Uint8Array; rawTagHex: string; hmacAttemptHex: string; guessedSecretLength: number } | null = null;
+  // Verdicts are per-forgery. They must be dropped whenever a new forgery is
+  // made, or the summary would re-render an old server verdict against the NEW
+  // guess — claiming "acceptance confirms that guess" for a length that was
+  // never submitted.
+  let lastRaw: boolean | null = null;
+  let lastHmac: boolean | null = null;
+  const forgetVerdicts = (): void => {
+    lastRaw = null;
+    lastHmac = null;
+  };
 
   const guessSlider = byId<HTMLInputElement>('le-guess');
   const guessValueLabel = byId<HTMLSpanElement>('le-guess-value');
@@ -1002,6 +1012,7 @@ function wireLengthExtensionPanel(): void {
       const message = byId<HTMLInputElement>('le-message').value;
       const r = await captureOriginalRequest(message);
       captured = { message, ...r };
+      forgetVerdicts();
       byId<HTMLElement>('le-raw-tag').textContent = r.rawMacHex;
       byId<HTMLElement>('le-hmac-tag').textContent = r.hmacMacHex;
       setVerdictIdle(byId<HTMLElement>('le-verdict-raw'), 'awaiting forge');
@@ -1018,6 +1029,8 @@ function wireLengthExtensionPanel(): void {
     regenerateDemoSecret();
     captured = null;
     forged = null;
+    forgetVerdicts();
+    byId<HTMLElement>('le-summary').textContent = '';
     byId<HTMLElement>('le-raw-tag').textContent = '(rotated — capture again)';
     byId<HTMLElement>('le-hmac-tag').textContent = '(rotated — capture again)';
     byId<HTMLElement>('le-forge-output').textContent = '(secret rotated; capture, then forge)';
@@ -1067,6 +1080,11 @@ function wireLengthExtensionPanel(): void {
         `Forged tag (HMAC attempt — won't work): ${result.forgedHmacTagAttemptHex}\n`;
       setVerdictIdle(byId<HTMLElement>('le-verdict-raw'), 'forged — submit it');
       setVerdictIdle(byId<HTMLElement>('le-verdict-hmac'), 'forged — submit it');
+      // This is a new forgery: the previous servers' verdicts belong to the
+      // previous guess and must not be re-attributed to this one.
+      forgetVerdicts();
+      byId<HTMLElement>('le-summary').textContent =
+        `Forged with guessed secret length ${result.guessedSecretLength} — submit it to both servers.`;
       setStatus(`Forge complete with guessed length ${result.guessedSecretLength}.`);
     } catch (error) {
       setStatus(`Forge error: ${(error as Error).message}`, true);
@@ -1093,8 +1111,6 @@ function wireLengthExtensionPanel(): void {
     updateLeSummary(null, ok);
   });
 
-  let lastRaw: boolean | null = null;
-  let lastHmac: boolean | null = null;
   function updateLeSummary(rawOk: boolean | null, hmacOk: boolean | null): void {
     if (rawOk !== null) lastRaw = rawOk;
     if (hmacOk !== null) lastHmac = hmacOk;
