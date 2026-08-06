@@ -15,7 +15,7 @@ async function revealEverything(page: Page): Promise<void> {
   // measures contrast.
   await page.addStyleTag({
     content: `*,*::before,*::after{animation:none!important;transition:none!important}
-      .step-line,[hidden]{opacity:1!important}`,
+      .step-line,[hidden]{}`,
   });
 
   await page.evaluate(() => {
