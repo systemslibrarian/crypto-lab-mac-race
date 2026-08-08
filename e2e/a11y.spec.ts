@@ -1,72 +1,26 @@
-import AxeBuilder from '@axe-core/playwright';
-import { expect, test, type Page } from '@playwright/test';
+import { test } from '@playwright/test';
+import { boot, driveAllStates, NARROW } from './gate';
 
 /**
- * WCAG regression gate. Deploys are already gated on the NIST KAT vectors;
- * this gates them on accessibility the same way. Scans the full page with
- * every <details> expanded and every collapsible/hidden region revealed, in
- * both themes (dark default + light).
+ * WCAG A/AA regression gate.
+ *
+ * Every exhibit's computed output and verdict is scanned in both themes at
+ * desktop and phone width. See `gate.ts` for why nothing is injected into the
+ * page, why each scan asserts its content first, and why `violations` is not
+ * the whole oracle.
  */
 
-const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'];
-
-async function revealEverything(page: Page): Promise<void> {
-  // Neutralize animations/transitions/opacity so nothing is mid-fade when axe
-  // measures contrast.
-  await page.addStyleTag({
-    content: `*,*::before,*::after{animation:none!important;transition:none!important}
-      .step-line,[hidden]{}`,
+for (const theme of ['dark', 'light'] as const) {
+  test(`no WCAG A/AA violations in ${theme} theme`, async ({ page }) => {
+    test.setTimeout(900_000);
+    await boot(page, theme);
+    await driveAllStates(page, theme);
   });
 
-  await page.evaluate(() => {
-    // Expand every native <details>.
-    for (const details of Array.from(document.querySelectorAll('details'))) {
-      (details as HTMLDetailsElement).open = true;
-    }
-    // Reveal every element the app hides via the [hidden] attribute
-    // (tour controls, stepper lines, tour progress).
-    for (const el of Array.from(document.querySelectorAll('[hidden]'))) {
-      el.removeAttribute('hidden');
-    }
+  test(`no WCAG A/AA violations in ${theme} theme at 380px`, async ({ page }) => {
+    test.setTimeout(900_000);
+    await page.setViewportSize(NARROW);
+    await boot(page, theme);
+    await driveAllStates(page, `${theme} @380px`);
   });
 }
-
-async function scan(page: Page): Promise<void> {
-  const results = await new AxeBuilder({ page }).withTags(TAGS).analyze();
-  const summary = results.violations.map((v) => ({
-    id: v.id,
-    impact: v.impact,
-    help: v.help,
-    nodes: v.nodes.map((n) => n.target.join(' ')).slice(0, 5),
-  }));
-  expect(summary).toEqual([]);
-}
-
-test('no WCAG A/AA violations in dark theme', async ({ page }) => {
-  await page.goto('.');
-  await revealEverything(page);
-  await scan(page);
-});
-
-test('no WCAG A/AA violations in light theme', async ({ page }) => {
-  await page.goto('.');
-  await page.locator('#cl-theme-toggle').click();
-  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
-  await revealEverything(page);
-  await scan(page);
-});
-
-test('length-extension verdict reports the forged guess and keeps the secret hidden', async ({ page }) => {
-  await page.goto('.');
-  await page.locator('#le-capture').click();
-  await page.locator('#le-guess').fill('8');
-  await page.locator('#le-forge').click();
-  await expect(page.locator('#le-forge-output')).toContainText('Guessed secret length: 8');
-
-  // Moving the slider after forging must not rewrite the history of the
-  // attempt that is about to be verified.
-  await page.locator('#le-guess').fill('9');
-  await page.locator('#le-verify-raw').click();
-  await expect(page.locator('#le-summary')).toContainText('guess 8');
-  await expect(page.locator('#le-summary')).not.toContainText('actual length');
-});

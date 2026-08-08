@@ -297,7 +297,7 @@ const LESSON_STEPS: { panelId: string; title: string; body: string }[] = [
 
 export function renderApp(container: HTMLElement): void {
   container.innerHTML = `
-    <div class="page" aria-label="MAC Race demo root">
+    <div class="page">
       <a class="skip-link" href="#main-content" aria-label="Skip to main content">Skip to main content</a>
       <button
         id="theme-toggle"
@@ -381,7 +381,7 @@ export function renderApp(container: HTMLElement): void {
           <div class="panel-head">
             <span class="lesson-badge">Lesson 1</span>
             <h2 id="p1-title">HMAC</h2>
-            <span class="chip chip-ok" aria-label="Status RECOMMENDED DEFAULT">RECOMMENDED DEFAULT</span>
+            <span class="chip chip-ok">RECOMMENDED DEFAULT</span>
           </div>
           <label for="hmac-message">Message</label>
           <textarea id="hmac-message" aria-label="HMAC message input">transfer=42&to=bob</textarea>
@@ -401,7 +401,7 @@ export function renderApp(container: HTMLElement): void {
             <div id="hmac-bitdiff-key" class="bitdiff-block"></div>
           </div>
 
-          <div class="verifier" aria-label="HMAC server verifier">
+          <div class="verifier" role="group" aria-label="HMAC server verifier">
             <h3>Server verifies</h3>
             <label for="hmac-verify-tag">Candidate tag (hex)</label>
             <input id="hmac-verify-tag" aria-label="HMAC candidate tag" />
@@ -413,14 +413,14 @@ export function renderApp(container: HTMLElement): void {
 
           <p class="note">${gloss('FIPS 198-1', 'US federal standard (NIST) that specifies HMAC.')}: HMAC uses nested hashing with ${gloss('ipad/opad', 'two fixed one-byte patterns (0x36 and 0x5c) repeated to a block, XORed with the key for the inner and outer hash so the two hash passes use different keyed inputs.')}, so length extension against bare SHA-256 does not apply.</p>
 
-          <details class="source-toggle"><summary>Show implementation</summary><pre class="src">${escapeHtml(HMAC_SRC)}</pre></details>
+          <details class="source-toggle"><summary>Show implementation</summary><pre class="src" tabindex="0">${escapeHtml(HMAC_SRC)}</pre></details>
         </section>
 
         <section class="panel" id="p2" aria-labelledby="p2-title">
           <div class="panel-head">
             <span class="lesson-badge">Lesson 3</span>
             <h2 id="p2-title">CMAC</h2>
-            <span class="chip chip-ok" aria-label="Status RECOMMENDED for FIPS contexts">RECOMMENDED (FIPS contexts)</span>
+            <span class="chip chip-ok">RECOMMENDED (FIPS contexts)</span>
           </div>
           <label for="cmac-message">Message</label>
           <textarea id="cmac-message" aria-label="CMAC message input">audit-log-entry</textarea>
@@ -433,7 +433,7 @@ export function renderApp(container: HTMLElement): void {
           </div>
           <div id="cmac-output" class="hex stepper" role="status" aria-live="polite" aria-label="CMAC output"></div>
 
-          <div class="verifier" aria-label="CMAC server verifier">
+          <div class="verifier" role="group" aria-label="CMAC server verifier">
             <h3>Server verifies</h3>
             <label for="cmac-verify-tag">Candidate tag (hex)</label>
             <input id="cmac-verify-tag" aria-label="CMAC candidate tag" />
@@ -445,14 +445,14 @@ export function renderApp(container: HTMLElement): void {
 
           <p class="note">NIST SP 800-38B: derives K1/K2 from AES_K(0^128), applies 10* padding, and XORs final block before last encryption.</p>
 
-          <details class="source-toggle"><summary>Show implementation</summary><pre class="src">${escapeHtml(CMAC_SRC)}</pre></details>
+          <details class="source-toggle"><summary>Show implementation</summary><pre class="src" tabindex="0">${escapeHtml(CMAC_SRC)}</pre></details>
         </section>
 
         <section class="panel" id="p3" aria-labelledby="p3-title">
           <div class="panel-head">
             <span class="lesson-badge">Lesson 4</span>
             <h2 id="p3-title">Poly1305</h2>
-            <span class="chip chip-ok" aria-label="Status RECOMMENDED with ChaCha20">RECOMMENDED (always with ChaCha20)</span>
+            <span class="chip chip-ok">RECOMMENDED (always with ChaCha20)</span>
           </div>
 
           <label for="poly-message">Message</label>
@@ -462,7 +462,7 @@ export function renderApp(container: HTMLElement): void {
           </div>
           <pre id="poly-output" class="hex" role="status" aria-live="polite" aria-label="Poly1305 output"></pre>
 
-          <div class="attack-pane" aria-label="Poly1305 one-time key reuse attack">
+          <div class="attack-pane" role="group" aria-label="Poly1305 one-time key reuse attack">
             <h3>You are the attacker</h3>
             <p class="note">A buggy server reused the <em>same</em> one-time key for two invoice messages. The two tags are linear equations in the ${gloss('clamped r', "half of the Poly1305 one-time key, with 22 specific bits forced to 0 ('clamped') so the field arithmetic stays fast and side-channel-safe; the other half is the additive value s.")} value <code>r</code>: <code>tag = (m·r mod 2¹³⁰⁻⁵ + s) mod 2¹²⁸</code>. Recover <code>r</code> and forge a new invoice.</p>
             <p class="note"><strong>Honest disclosure:</strong> real Poly1305 <code>r</code> is a ~106-bit clamped value, and each single-block accumulator is reduced mod 2¹³⁰⁻⁵ by a ~115-bit quotient the attacker never sees — so recovering <code>r</code> from just two tags is <em>not</em> tractable. To make the algebra runnable live in your browser this demo constrains <code>r</code> to 16 bits (so <code>m·r &lt; 2¹³⁰⁻⁵</code> and the reduction vanishes). The forgery it produces is genuinely valid against the real key; the <em>simplification is only the size of the search</em>. Generic Poly1305 reuse is catastrophic but not literally 16-bit-breakable.</p>
@@ -472,7 +472,7 @@ export function renderApp(container: HTMLElement): void {
             <pre id="poly-attack-output" class="hex" role="status" aria-live="polite" aria-label="Poly1305 attack output"></pre>
           </div>
 
-          <div class="verifier" aria-label="Poly1305 server verifier">
+          <div class="verifier" role="group" aria-label="Poly1305 server verifier">
             <h3>Server verifies</h3>
             <p class="note">Submit the forged tag from the attack against the original key. Both messages were authenticated with that key — so the server <em>will</em> accept your forgery.</p>
             <div class="button-row">
@@ -481,20 +481,20 @@ export function renderApp(container: HTMLElement): void {
             </div>
           </div>
 
-          <div class="callout-cve" aria-label="Incident callout">
+          <div class="callout-cve" role="group" aria-label="Incident callout">
             <strong>📜 RFC 8439 warns explicitly:</strong> "The key MUST be unpredictable for each invocation." Implementations that reused Poly1305 keys (early Wireguard / experimental QUIC ports, 2015–2018 era code) had to be patched specifically for this property.
           </div>
 
           <p class="note">RFC 8439: Poly1305 must use a unique one-time key per message, usually derived by ChaCha20 with a unique nonce.</p>
 
-          <details class="source-toggle"><summary>Show attack implementation</summary><pre class="src">${escapeHtml(POLY_SRC)}</pre></details>
+          <details class="source-toggle"><summary>Show attack implementation</summary><pre class="src" tabindex="0">${escapeHtml(POLY_SRC)}</pre></details>
         </section>
 
         <section class="panel" id="p4" aria-labelledby="p4-title">
           <div class="panel-head">
             <span class="lesson-badge">Lesson 5</span>
             <h2 id="p4-title">GHASH</h2>
-            <span class="chip chip-warn" aria-label="Status secure only with nonce discipline">SECURE only with nonce discipline</span>
+            <span class="chip chip-warn">SECURE only with nonce discipline</span>
           </div>
           <label for="ghash-ciphertext">Ciphertext (hex)</label>
           <textarea id="ghash-ciphertext" aria-label="GHASH ciphertext hex input">0388dace60b6a392f328c2b971b2fe78</textarea>
@@ -503,11 +503,11 @@ export function renderApp(container: HTMLElement): void {
           </div>
           <pre id="ghash-output" class="hex" role="status" aria-live="polite" aria-label="GHASH output"></pre>
 
-          <div class="attack-pane" aria-label="GHASH nonce reuse attack">
+          <div class="attack-pane" role="group" aria-label="GHASH nonce reuse attack">
             <h3>You are the attacker</h3>
             <p class="note">Two ciphertexts encrypted under the <em>same</em> AES-GCM nonce share the same hash subkey H. With a single delta you can solve for H and forge tags for any other ciphertext.</p>
 
-            <div class="linviz" aria-label="Why nonce reuse leaks H: the linear algebra collapses">
+            <div class="linviz" role="group" aria-label="Why nonce reuse leaks H: the linear algebra collapses">
               <p class="linviz-lede"><strong>Why does reuse leak H?</strong> Because a single-block tag is just <code>T = C · H</code> and the field is ${gloss('linear', 'f is linear when f(A) XOR f(B) = f(A XOR B). Multiplication by a fixed H in GF(2^128) is linear, so XORing two tags equals the tag of the XORed ciphertexts.')}. Watch the two tags XOR together: everywhere the H term is <em>identical</em>, XOR cancels it — until only <code>(C1 ⊕ C2)·H</code> is left, and H is the one unknown you can now solve for.</p>
               <div id="ghash-linviz-rows" class="linviz-rows" role="img" aria-label="Bit rows showing T1 XOR T2 equals (C1 XOR C2) times H, with the shared H term cancelling under XOR">
                 <p class="note linviz-idle">Run the attack below to watch the algebra collapse on the real bits.</p>
@@ -520,7 +520,7 @@ export function renderApp(container: HTMLElement): void {
             <pre id="ghash-attack-output" class="hex" role="status" aria-live="polite" tabindex="0" aria-label="GHASH attack output"></pre>
           </div>
 
-          <div class="verifier" aria-label="GHASH server verifier">
+          <div class="verifier" role="group" aria-label="GHASH server verifier">
             <h3>Server verifies</h3>
             <p class="note">After the nonce-reuse attack recovers H, the attacker can issue a forged tag for any ciphertext. The demo's local constant-time check (shown above) is the same operation a real GCM endpoint runs.</p>
             <div class="button-row">
@@ -529,20 +529,20 @@ export function renderApp(container: HTMLElement): void {
             </div>
           </div>
 
-          <div class="callout-cve" aria-label="Incident callout">
+          <div class="callout-cve" role="group" aria-label="Incident callout">
             <strong>🔓 Forbidden Attack (Böck, Zauner, Devlin — 2016):</strong> a scan of the public web found 184 HTTPS servers and IoT devices reusing GCM nonces. Researchers extracted authentication keys and demonstrated full message forgery over real TLS.
           </div>
 
           <p class="note">NIST SP 800-38D: GHASH is linear in ${gloss('GF(2^128)', 'a finite field of 2^128 elements: 128-bit blocks where "add" is bitwise XOR and "multiply" is polynomial multiplication modulo a fixed irreducible polynomial. "Linear" means GHASH(A) XOR GHASH(B) = GHASH(A XOR B).')}. Reusing a GCM nonce is catastrophic.</p>
 
-          <details class="source-toggle"><summary>Show attack implementation</summary><pre class="src">${escapeHtml(GHASH_SRC)}</pre></details>
+          <details class="source-toggle"><summary>Show attack implementation</summary><pre class="src" tabindex="0">${escapeHtml(GHASH_SRC)}</pre></details>
         </section>
 
         <section class="panel panel-wide" id="p5" aria-labelledby="p5-title">
           <div class="panel-head">
             <span class="lesson-badge">Lesson 2</span>
             <h2 id="p5-title">Length Extension Attack</h2>
-            <span class="chip chip-bad" aria-label="Status bare SHA-256 as MAC avoid">bare SHA-256 as MAC = AVOID</span>
+            <span class="chip chip-bad">bare SHA-256 as MAC = AVOID</span>
           </div>
 
           <div class="capture-pane">
@@ -577,7 +577,7 @@ export function renderApp(container: HTMLElement): void {
               <button id="le-forge" aria-label="Forge a length-extended tag">Forge tag</button>
             </div>
 
-            <div id="le-layout" class="le-layout" aria-label="Forged message layout" hidden>
+            <div id="le-layout" class="le-layout" role="group" aria-label="Forged message layout" hidden>
               <p class="le-layout-cap">What the server actually hashes — <code>SHA-256(secret ∥ forged bytes)</code>:</p>
               <div class="le-blocks">
                 <span class="le-seg le-seg-secret" title="Unknown to the attacker — only its LENGTH must be guessed">
@@ -628,7 +628,7 @@ export function renderApp(container: HTMLElement): void {
             <strong>🔓 Flickr API (2009):</strong> Flickr's signed request scheme used <code>md5(secret &#124;&#124; query)</code>. Researchers Duong and Rizzo (later of BEAST and CRIME) demonstrated tag forgery via length extension and could call arbitrary signed API methods. Fixed by switching to HMAC.
           </div>
 
-          <details class="source-toggle"><summary>Show attack implementation</summary><pre class="src">${escapeHtml(LENGTHEXT_SRC)}</pre></details>
+          <details class="source-toggle"><summary>Show attack implementation</summary><pre class="src" tabindex="0">${escapeHtml(LENGTHEXT_SRC)}</pre></details>
         </section>
 
         <section class="panel panel-wide" id="p6" aria-labelledby="p6-title">
@@ -636,7 +636,7 @@ export function renderApp(container: HTMLElement): void {
             <span class="lesson-badge">Lesson 6</span>
             <h2 id="p6-title">MAC Comparison + Timing Attack</h2>
           </div>
-          <div class="table-wrap" aria-label="MAC comparison table">
+          <div class="table-wrap" role="region" tabindex="0" aria-label="MAC comparison table">
             <table>
               <caption class="sr-only">MAC primitive comparison: construction, key size, tag size, PQ resistance, and use case</caption>
               <thead><tr><th>Primitive</th><th>Construction</th><th>Key</th><th>Tag</th><th>PQ</th><th>Use case</th></tr></thead>
@@ -654,7 +654,7 @@ export function renderApp(container: HTMLElement): void {
           <div class="button-row">
             <button id="timing-run" aria-label="Measure timing attack differences">Measure timing</button>
           </div>
-          <div class="table-wrap" aria-label="Timing attack measurements">
+          <div class="table-wrap" role="region" tabindex="0" aria-label="Timing attack measurements">
             <table>
               <caption class="sr-only">Timing attack demonstration: naive versus constant-time MAC comparison</caption>
               <thead><tr><th>Case</th><th>Naive compare</th><th>Constant-time compare</th></tr></thead>
@@ -684,14 +684,14 @@ export function renderApp(container: HTMLElement): void {
             <strong>🔓 Keyczar (Google) 2009, Java's <code>MessageDigest.isEqual</code> pre-Java 6u17:</strong> shipped non-constant-time MAC comparison; both fixed after public disclosure.
           </div>
 
-          <details class="source-toggle"><summary>Show implementation</summary><pre class="src">${escapeHtml(TIMING_SRC)}</pre></details>
+          <details class="source-toggle"><summary>Show implementation</summary><pre class="src" tabindex="0">${escapeHtml(TIMING_SRC)}</pre></details>
         </section>
       </main>
 
       <section class="why" aria-label="Why this matters">
         <h2>Why this matters</h2>
         <p>MAC failure is one of the most common causes of production cryptographic vulnerabilities. Length extension and timing attacks have repeatedly broken real systems.</p>
-        <p class="links" aria-label="Cross links">
+        <p class="links" role="group" aria-label="Cross links">
           <a href="https://systemslibrarian.github.io/crypto-lab/" target="_blank" rel="noreferrer">crypto-lab</a>
           <a href="https://systemslibrarian.github.io/crypto-lab-aes-modes/" target="_blank" rel="noreferrer">crypto-lab-aes-modes</a>
           <a href="https://systemslibrarian.github.io/crypto-lab-shadow-vault/" target="_blank" rel="noreferrer">crypto-lab-shadow-vault</a>
@@ -702,7 +702,7 @@ export function renderApp(container: HTMLElement): void {
 
       <footer class="footer" aria-label="Footer">
         <a class="github-badge" href="https://github.com/systemslibrarian/crypto-lab-mac-race" target="_blank" rel="noreferrer" aria-label="GitHub repository link">GitHub</a>
-        <p class="links" aria-label="Related demos">Related demos:
+        <p class="links" role="group" aria-label="Related demos">Related demos:
           <a href="https://systemslibrarian.github.io/crypto-lab-poly1305-mac/" target="_blank" rel="noreferrer">crypto-lab-poly1305-mac</a>
           <a href="https://systemslibrarian.github.io/crypto-lab-nonce-guard/" target="_blank" rel="noreferrer">crypto-lab-nonce-guard</a>
           <a href="https://systemslibrarian.github.io/crypto-lab-babel-hash/" target="_blank" rel="noreferrer">crypto-lab-babel-hash</a>

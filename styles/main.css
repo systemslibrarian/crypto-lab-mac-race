@@ -8,6 +8,10 @@
   --accent: #19c37d;
   --warn: #ffd166;
   --bad: #ff6b6b;
+  /* Text-only step of --bad. --bad is also a fill/border colour; as the tamper
+     glyph's ink on the dark .mac-lane panel it measured 3.71:1, so text takes a
+     lighter step of the same hue (5.0:1). */
+  --bad-ink: #ff9999;
   --line: #29507a;
   /* Control boundaries only (buttons, inputs, textareas, theme toggle). Those
      controls are filled with washes of --panel that land at 1.07-1.32:1 against
@@ -28,6 +32,7 @@
   --accent: #0f7c59;
   --warn: #8a5b00;
   --bad: #b42318;
+  --bad-ink: var(--bad);
   --line: #b4c9e0;
   --line-strong: #4e7fb6;
   --focus: #7a4b00;
@@ -773,7 +778,7 @@ button.secondary {
   text-decoration-color: var(--bad);
 }
 .mac-tamper-mark {
-  color: var(--bad);
+  color: var(--bad-ink);
   font-weight: 800;
 }
 .mac-verdict-chip {
@@ -850,16 +855,18 @@ button.secondary {
   font-weight: 400;
   line-height: 1.4;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 120ms ease-out;
+  /* `display: none`, not `visibility: hidden`: a hidden-but-laid-out box still
+     contributes to the document's scroll width, and this popover is at least
+     16rem wide and anchored `left: 0`, so on a term near the right edge it
+     pushed the whole page sideways at 380px (WCAG 1.4.10) — caused by an
+     element nobody can see. Taking it out of flow costs the 120ms fade. */
+  display: none;
 }
 .gloss:hover .gloss-pop,
 .gloss:focus .gloss-pop,
 .gloss:focus-within .gloss-pop,
 .gloss:focus-visible .gloss-pop {
-  opacity: 1;
-  visibility: visible;
+  display: block;
 }
 
 /* ===== GHASH linearity visualization ===== */
