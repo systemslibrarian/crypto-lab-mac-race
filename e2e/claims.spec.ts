@@ -490,3 +490,35 @@ test('guided tour highlights the six panels in pedagogical order', async ({ page
   await expect(page.locator('#tour-title')).toHaveText('Tour complete — explore freely');
   await expect(page.locator('#tour-progress')).toBeHidden();
 });
+
+/* ── The hidden attribute must actually hide ──────────────────────────────
+ * `[hidden] { display: none }` is a UA rule using an attribute selector, so any
+ * class rule setting `display` outranks it. `.le-layout { display: grid }` did:
+ * the length-extension forged-message layout painted at first paint (1105x161)
+ * under the caption "What the server actually hashes — SHA-256(secret ∥ forged
+ * bytes)", before the attack had been run.
+ *
+ * Asserted for EVERY element carrying `hidden`, so a future `display` on any
+ * hideable class fails here rather than shipping. The count check keeps it from
+ * passing vacuously on a page that happens to have no hidden elements.
+ */
+test('nothing marked hidden is painted', async ({ page }) => {
+  await page.goto('.');
+
+  const total = await page.locator('[hidden]').count();
+  expect(total, 'no [hidden] elements — this test would prove nothing').toBeGreaterThan(0);
+
+  const painted = await page.evaluate(() =>
+    [...document.querySelectorAll('[hidden]')]
+      .map((el) => {
+        const r = el.getBoundingClientRect();
+        return {
+          who: el.id || el.className.toString(),
+          display: getComputedStyle(el).display,
+          size: `${Math.round(r.width)}x${Math.round(r.height)}`,
+        };
+      })
+      .filter((x) => x.display !== 'none'),
+  );
+  expect(painted, 'elements marked hidden are painted').toEqual([]);
+});

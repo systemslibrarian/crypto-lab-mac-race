@@ -42,6 +42,18 @@
   box-sizing: border-box;
 }
 
+/* The `hidden` attribute must actually hide.
+   The UA rule is `[hidden] { display: none }` — an attribute selector, which any
+   class rule setting `display` outranks. `.le-layout { display: grid }` did, so
+   the length-extension forged-message layout painted at first paint (1105x161),
+   captioned "What the server actually hashes — SHA-256(secret ∥ forged bytes)",
+   before the attack had been run. `!important` is load-bearing: without it any
+   future `display` on a hideable class silently wins again, which is how this
+   shipped. */
+[hidden] {
+  display: none !important;
+}
+
 html {
   /* Own solid background-color so the body's gradient is not promoted to paint
      the canvas (WebKit reports the promoted body background as transparent,
