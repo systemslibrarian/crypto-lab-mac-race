@@ -1,4 +1,4 @@
-import { poly1305 } from '@noble/ciphers/_poly1305';
+import { poly1305 } from '@noble/ciphers/_poly1305.js';
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();

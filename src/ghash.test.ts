@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { hexToBytes, bytesToHex } from '@noble/ciphers/utils';
+import { hexToBytes, bytesToHex } from '@noble/ciphers/utils.js';
 import {
   computeGhash,
   gf128Mul,

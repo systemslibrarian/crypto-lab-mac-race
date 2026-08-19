@@ -1,4 +1,4 @@
-import { bytesToHex, hexToBytes } from '@noble/ciphers/utils';
+import { bytesToHex, hexToBytes } from '@noble/ciphers/utils.js';
 
 const BLOCK_SIZE = 16;
 const R = 0xe1000000000000000000000000000000n;
