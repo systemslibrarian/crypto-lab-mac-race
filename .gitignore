@@ -5,3 +5,4 @@ dist/
 /.pw-browsers/
 
 tsconfig.tsbuildinfo
+chat.md
