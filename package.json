@@ -5,13 +5,14 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "npm run test:publish-request && tsc -b && vite build",
     "preview": "vite preview",
     "test": "vitest run",
     "test:mutations": "node scripts/check-crc-mutations.mjs",
     "test:watch": "vitest",
     "test:a11y": "playwright test",
-    "deploy": "vite build && gh-pages -d dist"
+    "deploy": "gh workflow run pages.yml --repo systemslibrarian/crypto-lab-mac-race --ref main",
+    "test:publish-request": "node --test tests/publish-request.node.mjs"
   },
   "dependencies": {
     "@noble/ciphers": "^2.4.0"
@@ -20,7 +21,6 @@
     "@axe-core/playwright": "^4.13.0",
     "@playwright/test": "^1.63.0",
     "@types/node": "^26.6.4",
-    "gh-pages": "^6.1.1",
     "typescript": "^7.0.2",
     "vite": "^8.3.2",
     "vitest": "^5.0.3"
