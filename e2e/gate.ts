@@ -18,7 +18,7 @@ export const NARROW = { width: 380, height: 800 };
  *
  *  2. EVERY SCAN ASSERTS ITS CONTENT IS PRESENT FIRST, and there are scans well
  *     past first paint. axe over an empty container passes having checked
- *     nothing, and every one of this lab's six exhibits computes into an output
+ *     nothing, and every one of this lab's seven exhibits computes into an output
  *     panel that is empty until its button is pressed.
  *
  *  3. `violations` IS NOT THE WHOLE ORACLE. See `scan`.
@@ -87,21 +87,20 @@ async function expectNotBlank(page: Page, label: string): Promise<void> {
  * the emulation is applied imperatively BEFORE the navigation and then
  * *asserted* from inside the page.
  */
-export async function boot(page: Page, theme: 'dark' | 'light'): Promise<void> {
+export async function boot(page: Page): Promise<void> {
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.addInitScript((t) => localStorage.setItem('theme', t), theme);
   await page.goto('.');
   expect(
     await page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches),
     'reduced-motion emulation must actually be in effect'
   ).toBe(true);
-  await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
 
-  await expect(page.locator('.page section.panel')).toHaveCount(6);
+  await expect(page.locator('.page section.panel')).toHaveCount(7);
   await expect(page.locator('#hmac-run')).toBeVisible();
 
   await settle(page);
-  await expectNotBlank(page, `${theme} first paint`);
+  await expectNotBlank(page, 'dark first paint');
 }
 
 /**
@@ -300,6 +299,37 @@ export async function scan(page: Page, label: string): Promise<void> {
  */
 export async function driveAllStates(page: Page, theme: string): Promise<void> {
   await scan(page, `${theme} / first paint`);
+
+  // Checksum receiver: caught noise, rejected old CRC, accepted repair and
+  // forced target; then HMAC rejection and the explicit leaked-key branch.
+  await page.locator('#crc-accident').click();
+  await expect(page.locator('#crc-verdict1')).toHaveText('✗ CORRUPTION CAUGHT');
+  await scan(page, `${theme} / checksum accident`);
+  await page.locator('#crc-burst').check();
+  await page.locator('#crc-accident').click();
+  await expect(page.locator('#crc-verdict1')).toHaveText('✗ CORRUPTION CAUGHT');
+  await scan(page, `${theme} / checksum burst`);
+  await page.locator('#crc-naive').click();
+  await expect(page.locator('#crc-verdict2')).toHaveText('✗ REJECTED');
+  await scan(page, `${theme} / checksum naive tamper`);
+  await page.locator('#crc-repair').click();
+  await expect(page.locator('#crc-verdict3')).toHaveText('⚠ CRC VALID — AND FORGED');
+  await scan(page, `${theme} / checksum repaired tamper`);
+  await page.locator('#crc-force').click();
+  await expect(page.locator('#crc-verdict3b')).toHaveText('⚠ CRC VALID — AND FORGED');
+  await page.locator('#crc-explainer summary').click();
+  await scan(page, `${theme} / checksum forced target and explanation`);
+  await page.locator('#crc-hmac').click();
+  await expect(page.locator('#crc-verdict4')).toHaveText('✗ REJECTED');
+  await scan(page, `${theme} / checksum HMAC rejection`);
+  await page.locator('#crc-hmac-attempt').selectOption('guess');
+  await page.locator('#crc-hmac').click();
+  await expect(page.locator('#crc-verdict4')).toHaveText('✗ REJECTED');
+  await scan(page, `${theme} / checksum guessed HMAC key`);
+  await page.locator('#crc-key-leaked').check();
+  await page.locator('#crc-hmac').click();
+  await expect(page.locator('#crc-verdict4')).toHaveText('⚠ TAG VALID — AND FORGED');
+  await scan(page, `${theme} / leaked HMAC key`);
 
   // The four MAC constructions, each: compute, then verify.
   for (const mac of ['hmac', 'cmac', 'ghash', 'poly']) {

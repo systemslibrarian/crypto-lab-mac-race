@@ -33,10 +33,12 @@ jobs:
       - name: Crypto unit tests (vitest KAT / forgery / property)
         run: npm test
 
-      - name: Install Playwright browser
-        run: npx playwright install --with-deps chromium
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium firefox webkit
       - name: Browser gate (functional claims + axe-core WCAG A/AA)
         run: npm run test:a11y
+      - name: Mutation gate (CRC and HMAC verdict faults)
+        run: npm run test:mutations
 
       - uses: actions/upload-pages-artifact@v5
         with:

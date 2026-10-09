@@ -11,6 +11,7 @@ import {
   regenerateDemoSecret
 } from './lengthext';
 import { recoverTagByTimingAttack, runTimingDemo } from './timing';
+import { checksumPanelHtml, wireChecksumPanel } from './crc/panel';
 
 function byId<T extends HTMLElement>(id: string): T {
   const element = document.getElementById(id);
@@ -287,32 +288,28 @@ function constantTimeEqual(a, b) {
 }`;
 
 const LESSON_STEPS: { panelId: string; title: string; body: string }[] = [
-  { panelId: 'p1', title: '1. HMAC — the safe default', body: 'Start here. HMAC nests two hashes around the key so that knowing the tag tells you nothing about the internal hash state. This is what API request signing should use.' },
-  { panelId: 'p5', title: '2. Why we need HMAC: length-extension', body: 'Bare SHA-256(secret || message) leaks enough internal state through its tag that an attacker can forge tags for extended messages without the secret. Forge a tag, then verify it on the broken server.' },
-  { panelId: 'p2', title: '3. CMAC — block-cipher MAC', body: 'When AES is already in your stack, CMAC gives you a NIST-approved MAC built from a block cipher. Notice K1/K2 are derived from AES_K(0).' },
-  { panelId: 'p3', title: '4. Poly1305 — fast, one-time only', body: 'A polynomial MAC. Reusing the one-time key destroys authenticity: the two tags become linear equations in r. The demo uses a deliberately narrowed r so the recovery runs live in your browser — the algebra is real, the search space is a teaching simplification (disclosed in the panel).' },
-  { panelId: 'p4', title: '5. GHASH — linear in GF(2^128)', body: "GHASH is what authenticates AES-GCM. It is linear in the field, so nonce reuse leaks the hash subkey H. This is the Forbidden Attack." },
-  { panelId: 'p6', title: '6. Timing attack — non-constant-time compare', body: 'A naive byte-by-byte equality leaks prefix-match length. Watch a real byte-by-byte tag recovery driven entirely by that signal.' }
+  { panelId: 'p0', title: '1. Checksum vs MAC', body: 'Watch CRC-32 catch accidental corruption, then accept a deliberate change once the attacker repairs its public checksum. Compare the same change with HMAC.' },
+  { panelId: 'p1', title: '2. HMAC — the safe default', body: 'HMAC nests two hashes around the key so that knowing the tag tells you nothing about the internal hash state. This is what API request signing should use.' },
+  { panelId: 'p5', title: '3. Why we need HMAC: length-extension', body: 'Bare SHA-256(secret || message) leaks enough internal state through its tag that an attacker can forge tags for extended messages without the secret. Forge a tag, then verify it on the broken server.' },
+  { panelId: 'p2', title: '4. CMAC — block-cipher MAC', body: 'When AES is already in your stack, CMAC gives you a NIST-approved MAC built from a block cipher. Notice K1/K2 are derived from AES_K(0).' },
+  { panelId: 'p3', title: '5. Poly1305 — fast, one-time only', body: 'A polynomial MAC. Reusing the one-time key destroys authenticity: the two tags become linear equations in r. The demo uses a deliberately narrowed r so the recovery runs live in your browser — the algebra is real, the search space is a teaching simplification (disclosed in the panel).' },
+  { panelId: 'p4', title: '6. GHASH — linear in GF(2^128)', body: "GHASH is what authenticates AES-GCM. It is linear in the field, so nonce reuse leaks the hash subkey H. This is the Forbidden Attack." },
+  { panelId: 'p6', title: '7. Timing attack — non-constant-time compare', body: 'A naive byte-by-byte equality leaks prefix-match length. Watch a real byte-by-byte tag recovery driven entirely by that signal.' }
 ];
 
 export function renderApp(container: HTMLElement): void {
   container.innerHTML = `
     <div class="page">
       <a class="skip-link" href="#main-content" aria-label="Skip to main content">Skip to main content</a>
-      <button
-        id="theme-toggle"
-        class="theme-toggle"
-        aria-label="Switch to light mode"
-      >🌙</button>
       <header class="cl-hero">
         <div class="cl-hero-main">
           <h1 class="cl-hero-title">MAC Race</h1>
-          <p class="cl-hero-sub">HMAC · AES-CMAC · Poly1305 · GHASH</p>
-          <p class="cl-hero-desc">Build HMAC, AES-CMAC, Poly1305, and GHASH tags side by side, then trigger the misuse modes — length extension, one-time-key reuse, nonce reuse, and non-constant-time comparison — that separate a safe MAC from a broken one.</p>
+          <p class="cl-hero-sub">CRC-32 · HMAC · AES-CMAC · Poly1305 · GHASH</p>
+          <p class="cl-hero-desc">Start with a checksum that catches noise but accepts a repaired forgery. Then build keyed tags and trigger the misuse modes — length extension, one-time-key reuse, nonce reuse, and timing leakage — that change their verdicts.</p>
         </div>
         <aside class="cl-hero-why" aria-label="Why it matters">
           <span class="cl-hero-why-label">WHY IT MATTERS</span>
-          <p class="cl-hero-why-text">A MAC is the line between an authenticated message and a forged one. The classic disasters — Flickr's length-extension forgery, AEAD nonce reuse leaking the auth key, tag comparison leaking timing — came not from weak math but from misusing the primitive.</p>
+          <p class="cl-hero-why-text">A valid checksum only says the bytes match their public check value. A MAC asks whether the sender knew a secret. Length extension, nonce reuse, and timing leakage show how misuse can still break that promise.</p>
         </aside>
       </header>
 
@@ -322,7 +319,7 @@ export function renderApp(container: HTMLElement): void {
           <p class="intro-lede">A <strong>Message Authentication Code (MAC)</strong> is a short tag computed from a message <em>and</em> a secret key. Send the message with its tag; the receiver — who shares the key — recomputes the tag and accepts only if it matches. Change one byte of the message and the tag no longer matches, so the forgery is <strong>rejected</strong>.</p>
           <p class="intro-why">
             <span class="intro-q">Why can't I just hash the message?</span>
-            A plain hash <code>H(message)</code> has no secret, so anyone can recompute it — it proves the message was not <em>corrupted</em>, not that it came from someone holding the key. A MAC mixes in a key the attacker does not have. (Naively stitching the key in as <code>H(secret ∥ message)</code> is <em>also</em> broken — that is the length-extension trap in Lesson 2.)
+            A plain hash <code>H(message)</code> has no secret, so anyone can recompute it — it proves the message was not <em>corrupted</em>, not that it came from someone holding the key. A MAC mixes in a key the attacker does not have — try it in Lesson 1 below. (Naively stitching the key in as <code>H(secret ∥ message)</code> is <em>also</em> broken — that is the length-extension trap in Lesson 3.)
           </p>
         </div>
         <figure class="mac-anim" aria-label="Animation: a message and secret key flow into a MAC function that emits a fixed-size tag; the receiver accepts a matching tag but rejects a tampered message">
@@ -362,7 +359,7 @@ export function renderApp(container: HTMLElement): void {
       <section class="tour" aria-label="Guided tour">
         <div class="tour-head">
           <div>
-            <strong id="tour-title">Guided tour: start with HMAC →</strong>
+            <strong id="tour-title">Guided tour: start with Checksum vs MAC →</strong>
             <p class="tour-body" id="tour-body">Click "Start tour" to walk through the panels in pedagogical order. Each step highlights one panel and explains what the lesson is.</p>
           </div>
           <div class="tour-controls">
@@ -376,10 +373,11 @@ export function renderApp(container: HTMLElement): void {
       </section>
 
       <main id="main-content" class="panel-grid" aria-label="MAC demo panels">
+        ${checksumPanelHtml}
 
         <section class="panel" id="p1" aria-labelledby="p1-title">
           <div class="panel-head">
-            <span class="lesson-badge">Lesson 1</span>
+            <span class="lesson-badge">Lesson 2</span>
             <h2 id="p1-title">HMAC</h2>
             <span class="chip chip-ok">RECOMMENDED DEFAULT</span>
           </div>
@@ -418,7 +416,7 @@ export function renderApp(container: HTMLElement): void {
 
         <section class="panel" id="p2" aria-labelledby="p2-title">
           <div class="panel-head">
-            <span class="lesson-badge">Lesson 3</span>
+            <span class="lesson-badge">Lesson 4</span>
             <h2 id="p2-title">CMAC</h2>
             <span class="chip chip-ok">RECOMMENDED (FIPS contexts)</span>
           </div>
@@ -450,7 +448,7 @@ export function renderApp(container: HTMLElement): void {
 
         <section class="panel" id="p3" aria-labelledby="p3-title">
           <div class="panel-head">
-            <span class="lesson-badge">Lesson 4</span>
+            <span class="lesson-badge">Lesson 5</span>
             <h2 id="p3-title">Poly1305</h2>
             <span class="chip chip-ok">RECOMMENDED (always with ChaCha20)</span>
           </div>
@@ -492,7 +490,7 @@ export function renderApp(container: HTMLElement): void {
 
         <section class="panel" id="p4" aria-labelledby="p4-title">
           <div class="panel-head">
-            <span class="lesson-badge">Lesson 5</span>
+            <span class="lesson-badge">Lesson 6</span>
             <h2 id="p4-title">GHASH</h2>
             <span class="chip chip-warn">SECURE only with nonce discipline</span>
           </div>
@@ -540,7 +538,7 @@ export function renderApp(container: HTMLElement): void {
 
         <section class="panel panel-wide" id="p5" aria-labelledby="p5-title">
           <div class="panel-head">
-            <span class="lesson-badge">Lesson 2</span>
+            <span class="lesson-badge">Lesson 3</span>
             <h2 id="p5-title">Length Extension Attack</h2>
             <span class="chip chip-bad">bare SHA-256 as MAC = AVOID</span>
           </div>
@@ -633,7 +631,7 @@ export function renderApp(container: HTMLElement): void {
 
         <section class="panel panel-wide" id="p6" aria-labelledby="p6-title">
           <div class="panel-head">
-            <span class="lesson-badge">Lesson 6</span>
+            <span class="lesson-badge">Lesson 7</span>
             <h2 id="p6-title">MAC Comparison + Timing Attack</h2>
           </div>
           <div class="table-wrap" role="region" tabindex="0" aria-label="MAC comparison table">
@@ -715,6 +713,7 @@ export function renderApp(container: HTMLElement): void {
     </div>
   `;
 
+  wireChecksumPanel();
   wireHmacPanel();
   wireCmacPanel();
   wirePolyPanel();

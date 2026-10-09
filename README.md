@@ -1,16 +1,18 @@
 # crypto-lab-mac-race
 
-Primitives: HMAC-SHA-256 · HMAC-SHA-512 · AES-CMAC · Poly1305 · GHASH
+Primitives: CRC-32/ISO-HDLC · HMAC-SHA-256 · HMAC-SHA-512 · AES-CMAC · Poly1305 · GHASH
 
 ## What It Is
 
-crypto-lab-mac-race is a browser demo for HMAC-SHA-256, HMAC-SHA-512, AES-CMAC, Poly1305, and GHASH, plus attack panels that show where incorrect MAC constructions fail. These primitives are symmetric-key authentication mechanisms used to verify message integrity and origin authenticity, not to encrypt plaintext. The project focuses on how each construction behaves under correct and incorrect usage, including nonce/key reuse, length extension on a vulnerable prefix-MAC pattern, and timing leakage from naive comparison. The security model is symmetric authentication with shared secret material between parties.
+crypto-lab-mac-race is a browser demo for CRC-32, HMAC-SHA-256, HMAC-SHA-512, AES-CMAC, and Poly1305, plus GHASH and attack panels that show where incorrect authentication constructions fail. CRC-32 is an unkeyed checksum for accidental corruption; the MACs use shared secret material to verify message integrity and origin authenticity. None of these mechanisms encrypt plaintext. The project shows how each construction behaves under correct and incorrect usage, including checksum repair, nonce/key reuse, length extension on a vulnerable prefix-MAC pattern, and timing leakage from naive comparison.
 
 A newcomer starts at a "What is a MAC?" intro card — a one-sentence framing plus a small animation of a message and secret key flowing into a fixed-size tag, and an attacker who alters the message getting rejected — so the mental model is grounded before any primitive appears. A guided tour then walks the panels in pedagogical order. Field-math mechanisms are shown as pictures, not just hex: the GHASH panel animates `T1 ⊕ T2 = (C1 ⊕ C2)·H` as stacked 128-bit bit-rows so the shared `H` term visibly cancels under XOR, and the length-extension panel draws the forged message as labelled `[secret][message][glue padding][append]` segments with the secret greyed as unknown. First-use jargon (ipad/opad, Merkle-Damgard, clamped r, GF(2^128), FIPS 198-1) carries inline hover/focus definitions.
 
 ## Exhibits
 
-1. **What is a MAC?** — intro card with a one-sentence definition, a "why can't I just hash the message?" answer, and an animated message + key → tag → accept/reject flow that grounds the whole page.
+The intro card defines a MAC and shows a message and key flowing into a tag. The guided tour covers seven lessons:
+
+1. **Checksum vs MAC** — CRC-32 catches flipped bits and a naive tamper, then accepts a repaired checksum or four-byte forced target. HMAC-SHA-256 rejects the same changed message until the optional key-leak toggle is enabled.
 2. **HMAC** (the safe default) — step-through of the ipad/opad nested construction, an avalanche bit-diff grid with a "why ~50% flip matters" security note, and a server verifier.
 3. **Length-extension attack** — capture a `SHA-256(secret ∥ msg)` tag, forge an extended tag without the secret, and see a labelled diagram of the forged message layout; a side-by-side HMAC server rejects the same attack.
 4. **CMAC** — NIST SP 800-38B subkey (K1/K2) derivation and final-block handling, step-by-step.
@@ -31,7 +33,7 @@ A newcomer starts at a "What is a MAC?" intro card — a one-sentence framing pl
 
 **[systemslibrarian.github.io/crypto-lab-mac-race](https://systemslibrarian.github.io/crypto-lab-mac-race/)**
 
-The demo lets you run six interactive panels: HMAC, CMAC, Poly1305, GHASH, a SHA-256 length-extension attack, and a timing-attack comparison for naive vs constant-time verification. You can edit message, key, ciphertext, and attacker-append inputs, then recompute outputs to observe how tags and attack outcomes change. It does not provide encrypt/decrypt workflows; it is focused on message authentication behavior and misuse demonstrations.
+The demo lets you run seven interactive panels: Checksum vs MAC, HMAC, CMAC, Poly1305, GHASH, a SHA-256 length-extension attack, and a timing-attack comparison for naive vs constant-time verification. You can edit messages and attack inputs, then recompute outputs to observe how checksums, tags, and attack outcomes change. It does not provide encrypt/decrypt workflows; it is focused on message authentication behavior and misuse demonstrations.
 
 ## What Can Go Wrong
 
@@ -65,10 +67,12 @@ self-tests:
 
 ```bash
 npm test        # KAT / property / forgery-rejection unit tests
+npx playwright install chromium firefox webkit
 npm run test:a11y  # browser gate (Playwright): on-screen claims + axe-core WCAG A/AA
+npm run test:mutations  # checks that eight CRC/HMAC faults fail named tests
 ```
 
-The suite covers RFC 4231 HMAC vectors, NIST SP 800-38B AES-CMAC, RFC 8439
+The suite covers CRC-32/ISO-HDLC check and residue vectors, fixed-seed checksum repairs and four-byte target forcing through the real receiver, RFC 4231 HMAC vectors, NIST SP 800-38B AES-CMAC, RFC 8439
 Poly1305, GHASH GF(2^128) vectors and field laws, the from-scratch SHA-256
 core cross-checked against WebCrypto, and each attack end-to-end: the GHASH
 Forbidden Attack recovers a live-derived `H` and the "server" (holding the true
@@ -76,14 +80,16 @@ Forbidden Attack recovers a live-derived `H` and the "server" (holding the true
 full re-hash and rejected on a wrong length guess; the Poly1305 reuse forgery
 must match the tag the real key produces.
 
-`e2e/claims.spec.ts` gates the *page* on the same standard: it drives the real
+`e2e/claims.spec.ts` gates the *page* on the same standard: it independently recomputes every displayed CRC from the displayed bytes, checks the affine equation and HMAC control, and drives the real
 panels and re-derives each verdict from what the page printed — the HMAC tag
 against its own step list, the bit-diff labels against the cells they drew, the
 GHASH deltas against the ciphertexts and tags beside them, the timing summary
 against the rows above it — and sweeps the attacker's whole 8..24-byte secret
 length search space, asserting exactly one guess forges a tag the broken server
-accepts while the HMAC server rejects every one. Both `npm test` and the browser
-gate run in CI before every Pages deploy.
+accepts while the HMAC server rejects every one. The browser gate scans the
+dark-only page at desktop and phone widths in Chromium, and checks the core lesson in
+Firefox and WebKit. The unit, browser, and mutation gates run in CI before
+every Pages deploy.
 
 ## Related Demos
 

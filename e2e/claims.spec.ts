@@ -66,6 +66,26 @@ const popcount = (hex: string): number =>
     return total + bits;
   }, 0);
 
+/** Independent bitwise CRC-32/ISO-HDLC oracle; deliberately no table. */
+const bitwiseCrc = (bytes: number[]): number => {
+  let register = 0xffffffff;
+  for (const byte of bytes) {
+    register ^= byte;
+    for (let bit = 0; bit < 8; bit += 1) register = (register >>> 1) ^ ((register & 1) ? 0xedb88320 : 0);
+  }
+  return (register ^ 0xffffffff) >>> 0;
+};
+
+async function assertCrcDisplay(page: Page, suffix: string): Promise<{ before: number[]; after: number[]; actual: number; sent: number }> {
+  const before = hexToBytes((await page.locator(`#crc-bytes${suffix} [data-hex]`).first().getAttribute('data-hex'))!);
+  const after = hexToBytes((await page.locator(`#crc-bytes${suffix} [data-hex]`).last().getAttribute('data-hex'))!);
+  const actual = Number.parseInt((await page.locator(`#crc-check${suffix} [data-actual]`).getAttribute('data-actual'))!, 16);
+  const sent = Number.parseInt((await page.locator(`#crc-check${suffix} [data-sent]`).getAttribute('data-sent'))!, 16);
+  expect(actual).toBe(bitwiseCrc(after));
+  expect((await page.locator(`#crc-verdict${suffix}`).getAttribute('class'))?.includes('verdict-alarm')).toBe(actual === sent);
+  return { before, after, actual, sent };
+}
+
 /** Assert a verdict chip shows the expected word *and* the matching state class. */
 async function expectVerdict(chip: Locator, expected: 'ACCEPTED' | 'REJECTED'): Promise<void> {
   await expect(chip).toHaveText(expected);
@@ -466,13 +486,167 @@ test('timing attack: byte-by-byte recovery matches the true tag using 256 oracle
 });
 
 // ---------------------------------------------------------------------------
+// Checksum vs MAC
+// ---------------------------------------------------------------------------
+
+test('CRC catches noise, then the same receiver accepts a repaired forgery and any forced target', async ({ page }) => {
+  await open(page);
+  await expect(page.locator('#crc-original')).toHaveText(bitwiseCrc([...new TextEncoder().encode('PAY $0010 TO ALICE')]).toString(16).padStart(8, '0'));
+  for (let flips = 1; flips <= 8; flips += 1) {
+    await page.locator('#crc-bit-count').fill(String(flips));
+    await page.locator('#crc-accident').click();
+    const { before, after, actual, sent } = await assertCrcDisplay(page, '1');
+    expect(popcount(xorHex(before.map((b) => b.toString(16).padStart(2, '0')).join(''), after.map((b) => b.toString(16).padStart(2, '0')).join('')))).toBe(flips);
+    expect((await page.locator('#crc-bytes1 .checksum-bit-marks').allInnerTexts()).join('').split('↑').length - 1).toBe(flips);
+    // Random multi-bit changes can in principle collide. Single-bit changes
+    // and contiguous bursts up to 32 bits have a guaranteed detection claim.
+    if (flips === 1) {
+      expect(actual).not.toBe(sent);
+      await expect(page.locator('#crc-verdict1')).toHaveText('✗ CORRUPTION CAUGHT');
+      await expect(page.locator('#crc-working1')).toBeVisible();
+    }
+  }
+  await page.locator('#crc-burst').check();
+  await expect(page.locator('#crc-bit-count')).toBeDisabled();
+  await expect(page.locator('#crc-burst-note')).toBeVisible();
+  await page.locator('#crc-accident').click();
+  const burst = await assertCrcDisplay(page, '1');
+  expect(burst.actual).not.toBe(burst.sent);
+  const burstFlips = popcount(xorHex(burst.before.map((b) => b.toString(16).padStart(2, '0')).join(''), burst.after.map((b) => b.toString(16).padStart(2, '0')).join('')));
+  expect(burstFlips).toBeGreaterThanOrEqual(1);
+  expect(burstFlips).toBeLessThanOrEqual(32);
+  const burstPositions = burst.before.flatMap((byte, i) => Array.from({ length: 8 }, (_, bit) => ((byte ^ burst.after[i]!) >>> bit) & 1 ? i * 8 + bit : -1)).filter((bit) => bit >= 0);
+  expect(burstPositions.at(-1)! - burstPositions[0]! + 1).toBe(burstFlips);
+
+  await page.locator('#crc-naive').click();
+  const naive = await assertCrcDisplay(page, '2');
+  expect(naive.sent).toBe(bitwiseCrc(naive.before));
+  expect(naive.actual).not.toBe(naive.sent);
+  await expect(page.locator('#crc-verdict2')).toHaveText('✗ REJECTED');
+  await expect(page.locator('#crc-working2')).toBeVisible();
+
+  await page.locator('#crc-repair').click();
+  const repaired = await assertCrcDisplay(page, '3');
+  expect(repaired.after).toEqual(naive.after);
+  expect(repaired.actual).toBe(repaired.sent);
+  await expect(page.locator('#crc-verdict3')).toHaveClass(/verdict-alarm/);
+  await page.locator('#crc-explainer summary').click();
+  const equation = await text(page, '#crc-affine');
+  const terms = grab(equation, /([0-9a-f]{8}) ⊕ ([0-9a-f]{8}) ⊕ ([0-9a-f]{8}) = ([0-9a-f]{8}) \(receiver: ([0-9a-f]{8})\)/);
+  expect((Number.parseInt(terms[1]!, 16) ^ Number.parseInt(terms[2]!, 16) ^ Number.parseInt(terms[3]!, 16)) >>> 0).toBe(repaired.actual);
+  expect(Number.parseInt(terms[4]!, 16)).toBe(repaired.actual);
+  expect(Number.parseInt(terms[5]!, 16)).toBe(repaired.actual);
+
+  await page.locator('#crc-target').fill('a1b2c3d4');
+  await expect(page.locator('#crc-verdict3')).toHaveText('⚠ CRC VALID — AND FORGED');
+  await page.locator('#crc-force').click();
+  const forced = await assertCrcDisplay(page, '3b');
+  expect(forced.after.length).toBe(forced.before.length + 4);
+  expect(forced.after.slice(0, forced.before.length)).toEqual(forced.before);
+  expect(forced.actual).toBe(0xa1b2c3d4);
+  expect(forced.sent).toBe(0xa1b2c3d4);
+  await expect(page.locator('#crc-verdict3b')).toHaveClass(/verdict-alarm/);
+
+  // The negative claim stays visible after eight successful noise detections.
+  await expect(page.locator('#p0')).toContainText('CRC-32 detects accidental corruption; it does not detect deliberate changes, because anyone can recompute it.');
+});
+
+test('HMAC rejects the same forged bytes until the key-leak toggle is explicitly enabled', async ({ page }) => {
+  await open(page);
+  await expect(page.locator('#crc-key-leaked')).not.toBeChecked();
+  await expect(page.locator('#crc-guessed-key')).toBeDisabled();
+  await page.locator('#crc-repair').click();
+  const crc = await assertCrcDisplay(page, '3');
+  await page.locator('#crc-hmac').click();
+  const hmacAfter = hexToBytes((await page.locator('#crc-bytes4 [data-hex]').last().getAttribute('data-hex'))!);
+  expect(hmacAfter).toEqual(crc.after);
+  await expect(page.locator('#crc-verdict4')).toHaveText('✗ REJECTED');
+  await expect(page.locator('#crc-verdict4')).toHaveClass(/verdict-reject/);
+  await expect(page.locator('#crc-check4')).toContainText('Genuine original control: ACCEPTED');
+  await expect(page.locator('#crc-working4')).toBeVisible();
+  await page.locator('#crc-hmac-attempt').selectOption('guess');
+  await expect(page.locator('#crc-guessed-key')).toBeEnabled();
+  await expect(page.locator('#crc-verdict3')).toHaveText('⚠ CRC VALID — AND FORGED');
+  await page.locator('#crc-hmac').click();
+  await expect(page.locator('#crc-verdict4')).toHaveText('✗ REJECTED');
+  await page.locator('#crc-key-leaked').check();
+  await expect(page.locator('#crc-hmac-attempt')).toBeDisabled();
+  await expect(page.locator('#crc-guessed-key')).toBeDisabled();
+  await expect(page.locator('#crc-verdict3')).toHaveText('⚠ CRC VALID — AND FORGED');
+  await expect(page.locator('#crc-hmac-caption')).toContainText('With the leaked key');
+  await page.locator('#crc-hmac').click();
+  await expect(page.locator('#crc-verdict4')).toHaveText('⚠ TAG VALID — AND FORGED');
+  await expect(page.locator('#crc-verdict4')).toHaveClass(/verdict-alarm/);
+  await expect(page.locator('#p0')).toContainText('HMAC is only as strong as the secrecy of its key.');
+  await page.reload();
+  await expect(page.locator('#crc-key-leaked')).not.toBeChecked();
+});
+
+test('an in-flight HMAC result cannot restore a verdict after an edit or key rotation', async ({ page }) => {
+  await page.addInitScript(() => {
+    const subtle = crypto.subtle;
+    const sign = subtle.sign.bind(subtle);
+    Object.defineProperty(subtle, 'sign', {
+      configurable: true,
+      value: async (algorithm: AlgorithmIdentifier, key: CryptoKey, data: BufferSource) => {
+        await new Promise((resolve) => setTimeout(resolve, 150));
+        return sign(algorithm, key, data);
+      },
+    });
+  });
+  await open(page);
+  await page.locator('#crc-hmac').click();
+  await page.locator('#crc-altered').fill('PAY $8000 TO ALICE');
+  await page.waitForTimeout(400);
+  await expect(page.locator('#crc-verdict4')).toHaveText('inputs changed — run again');
+  await expect(page.locator('#crc-check4')).toBeEmpty();
+
+  await page.locator('#crc-hmac').click();
+  await page.locator('#crc-rotate-key').click();
+  await page.waitForTimeout(400);
+  await expect(page.locator('#crc-verdict4')).toHaveText('inputs changed — run again');
+  await expect(page.locator('#crc-check4')).toBeEmpty();
+});
+
+test('checksum edits retire verdicts; identical input, invalid targets and length changes are handled', async ({ page }) => {
+  await open(page);
+  await page.locator('#crc-repair').click();
+  await page.locator('#crc-hmac').click();
+  await expect(page.locator('#crc-verdict3')).toHaveClass(/verdict-alarm/);
+  await page.locator('#crc-altered').fill('PAY $9000 TO ALICE');
+  await expect(page.locator('#crc-verdict3')).toHaveClass(/verdict-alarm/);
+  await page.locator('#crc-message').fill('PAY $0010 TO ALICE');
+  await expect(page.locator('#crc-verdict3')).toHaveClass(/verdict-alarm/);
+  await page.locator('#crc-altered').fill('PAY $8000 TO ALICE');
+  await expect(page.locator('#crc-verdict3')).toHaveText('inputs changed — run again');
+  await expect(page.locator('#crc-verdict4')).toHaveText('inputs changed — run again');
+  await page.locator('#crc-repair').click();
+  await page.locator('#crc-message').fill('PAY $0020 TO ALICE');
+  await expect(page.locator('#crc-verdict3')).toHaveText('inputs changed — run again');
+  await page.locator('#crc-hmac').click();
+  await page.locator('#crc-rotate-key').click();
+  await expect(page.locator('#crc-verdict4')).toHaveText('inputs changed — run again');
+  await page.locator('#crc-altered').fill('short');
+  await page.locator('#crc-repair').click();
+  await expect(page.locator('#crc-length-error')).toContainText('equal byte lengths');
+  await expect(page.locator('#crc-verdict3')).toHaveText('inputs changed — run again');
+  await page.locator('#crc-target').fill('bad');
+  await page.locator('#crc-force').click();
+  await expect(page.locator('#crc-target-error')).toHaveText('Target CRC must be exactly 8 hex digits.');
+  await page.locator('#crc-message').fill('');
+  await expect(page.locator('#crc-original')).toHaveText('00000000');
+  await page.locator('#crc-accident').click();
+  await expect(page.locator('#crc-verdict1')).toContainText('Add message bytes');
+});
+
+// ---------------------------------------------------------------------------
 // Guided tour
 // ---------------------------------------------------------------------------
 
-test('guided tour highlights the six panels in pedagogical order', async ({ page }) => {
+test('guided tour highlights the seven panels in pedagogical order', async ({ page }) => {
   await open(page);
 
-  const order = ['p1', 'p5', 'p2', 'p3', 'p4', 'p6'];
+  const order = ['p0', 'p1', 'p5', 'p2', 'p3', 'p4', 'p6'];
   await page.locator('#tour-start').click();
 
   for (let step = 0; step < order.length; step += 1) {

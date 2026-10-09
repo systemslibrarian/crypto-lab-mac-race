@@ -13,29 +13,13 @@
      lighter step of the same hue (5.0:1). */
   --bad-ink: #ff9999;
   --line: #29507a;
-  /* Control boundaries only (buttons, inputs, textareas, theme toggle). Those
+  /* Control boundaries only (buttons, inputs, textareas). Those
      controls are filled with washes of --panel that land at 1.07-1.32:1 against
      the panel behind them, so the border is the sole boundary and WCAG 2.1 SC
      1.4.11 requires 3:1. --line stays as-is for decorative rules (cards, chips,
      tables, dividers). */
   --line-strong: #3d78b6;
   --focus: #ffbf47;
-}
-
-:root[data-theme='light'] {
-  color-scheme: light;
-  --bg: #f5f8fb;
-  --bg-alt: #dbe8f6;
-  --panel: #ffffff;
-  --text: #10243a;
-  --muted: #35526f;
-  --accent: #0f7c59;
-  --warn: #8a5b00;
-  --bad: #b42318;
-  --bad-ink: var(--bad);
-  --line: #b4c9e0;
-  --line-strong: #4e7fb6;
-  --focus: #7a4b00;
 }
 
 * {
@@ -143,23 +127,7 @@ button {
   font-family: inherit;
 }
 
-.theme-toggle {
-  width: 2.6rem;
-  height: 2.6rem;
-  border-radius: 50%;
-  border: 1px solid var(--line-strong);
-  background: color-mix(in srgb, var(--panel) 80%, var(--accent) 20%);
-  color: var(--text);
-  padding: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.2rem;
-  line-height: 1;
-}
-
-button:hover,
-.theme-toggle:hover {
+button:hover {
   background: color-mix(in srgb, var(--panel) 68%, var(--accent) 32%);
   cursor: pointer;
 }
@@ -167,8 +135,7 @@ button:hover,
 button:focus-visible,
 input:focus-visible,
 textarea:focus-visible,
-a:focus-visible,
-.theme-toggle:focus-visible {
+a:focus-visible {
   outline: 3px solid var(--focus);
   outline-offset: 2px;
 }
@@ -516,6 +483,41 @@ button.secondary {
   background: color-mix(in srgb, var(--panel) 80%, var(--muted) 20%);
   color: var(--muted);
 }
+
+.verdict-alarm {
+  color: var(--text);
+  border: 2px dashed var(--bad);
+  background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--bad) 22%, var(--panel)) 0 7px, var(--panel) 7px 14px);
+}
+
+.checksum-panel { gap: 0.9rem; }
+.checksum-panel h3, .checksum-panel h4 { margin: 0; }
+.checksum-inputs, .checksum-steps { display: grid; grid-template-columns: 1fr; gap: 0.9rem; }
+@media (min-width: 760px) {
+  .checksum-inputs, .checksum-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.checksum-step { display: grid; align-content: start; gap: 0.65rem; border: 1px solid var(--line); border-radius: 0.8rem; padding: 0.9rem; min-width: 0; }
+.checksum-step .note { margin: 0; }
+.checksum-step button { justify-self: start; }
+.checksum-step select { width: 100%; min-height: 44px; border: 1px solid var(--line-strong); border-radius: 0.65rem; padding: 0.5rem; background: var(--panel); color: var(--text); font: inherit; }
+.checksum-step select:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.checksum-controls { display: grid; gap: 0.3rem; }
+.checksum-controls input[type='range'] { padding: 0; min-height: 44px; }
+.checkbox-label { display: flex; align-items: center; gap: 0.55rem; font-weight: 600; }
+.checkbox-label input { width: 1.25rem; height: 1.25rem; min-height: unset; flex: none; accent-color: var(--accent); }
+.checksum-leak { border: 2px dashed var(--bad); border-radius: 0.6rem; padding: 0.65rem; }
+.checksum-force { display: grid; gap: 0.55rem; border-top: 1px solid var(--line); padding-top: 0.9rem; }
+.checksum-bytes { font-family: "IBM Plex Mono", "Consolas", monospace; font-size: 0.83rem; overflow-wrap: anywhere; }
+.checksum-bytes > div { margin: 0.3rem 0; }
+.checksum-byte-strip { display: inline-flex; flex-wrap: wrap; gap: 0.2rem; vertical-align: middle; }
+.checksum-byte-strip > span { border: 1px solid var(--line); border-radius: 0.25rem; padding: 0.1rem 0.2rem; display: inline-grid; justify-items: center; }
+.checksum-byte-strip .checksum-byte-changed { border: 2px solid var(--bad); background: color-mix(in srgb, var(--bad) 26%, var(--panel)); font-weight: 700; }
+.checksum-bit-marks { font-size: 0.6rem; line-height: 1.1; letter-spacing: -0.1em; white-space: nowrap; }
+.checksum-check { font-family: "IBM Plex Mono", "Consolas", monospace; overflow-wrap: anywhere; margin: 0; font-size: 0.82rem; }
+.checksum-working { display: block; font-size: 0.85rem; color: var(--muted); margin-top: 0.35rem; }
+.checksum-error { color: var(--bad-ink); font-weight: 700; margin: 0; }
+.checksum-error:empty { display: none; }
+.checksum-claim { border-left: 4px solid var(--bad); margin: 0; padding: 0.55rem 0.8rem; background: color-mix(in srgb, var(--bad) 9%, var(--panel)); font-weight: 600; }
 
 /* Attack pane */
 .attack-pane {
@@ -1030,8 +1032,7 @@ button.secondary {
   padding-left: 0.7rem;
 }
 
-/* Accent/tint/text colors mapped to this demo's theme vars: --muted (text-dim),
-   --line (border), --accent, --text — passes axe contrast in dark + light. */
+/* Accent/tint/text colors mapped to this demo's dark palette. */
 .cl-hero{display:flex;align-items:flex-start;justify-content:space-between;gap:clamp(1rem,4vw,3rem);flex-wrap:wrap;margin:clamp(1rem,3vw,2rem) 0 1.5rem;}
 .cl-hero-main{flex:1 1 22rem;min-width:min(100%,20rem);}
 .cl-hero-title{margin:0;font-size:clamp(1.6rem,3.8vw,2.7rem);font-weight:700;line-height:1.1;letter-spacing:.01em;}

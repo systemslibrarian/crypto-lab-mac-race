@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "test": "vitest run",
+    "test:mutations": "node scripts/check-crc-mutations.mjs",
     "test:watch": "vitest",
     "test:a11y": "playwright test",
     "deploy": "vite build && gh-pages -d dist"
