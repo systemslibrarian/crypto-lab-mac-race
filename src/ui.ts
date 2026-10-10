@@ -506,9 +506,9 @@ export function renderApp(container: HTMLElement): void {
             <p class="note" id="ghash-model-scope"><strong>Teaching scope:</strong> this is a raw single-block field-product toy: <code>T = C·H</code>. It uses no nonce, AAD, length block or nonce-derived mask. Real GCM computes GHASH over padded AAD/ciphertext plus a length block, then masks it with <code>E_K(J0)</code>. <code>H = E_K(0¹²⁸)</code> depends on the AES key and is the same even with different nonces. For equal-length one-block ciphertexts, no AAD and full tags under the same key/nonce, real GCM gives <code>ΔT = ΔC·H²</code>, not this toy's <code>ΔC·H</code>. The comparison below checks only toy products; it is not AES-GCM authentication. See <a href="https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38d.pdf" target="_blank" rel="noopener noreferrer">NIST SP 800-38D algorithms 4/5</a>.</p>
 
             <div class="linviz" role="group" aria-label="Raw single-block multiplication by fixed H is linear">
-              <p class="linviz-lede"><strong>Why does this toy expose H?</strong> Because its raw single-block tag is <code>T = C · H</code> and the field is ${gloss('linear', 'f is linear when f(A) XOR f(B) = f(A XOR B). Multiplication by a fixed H in GF(2^128) is linear, so XORing two tags equals the tag of the XORed ciphertexts.')}. XOR the toy tags: the common <code>·H</code> factor stays, giving <code>(C1 ⊕ C2)·H</code> is left, and H is the one unknown you can now solve for.</p>
+              <p class="linviz-lede"><strong>Why does this toy expose H?</strong> Because its raw single-block tag is <code>T = C · H</code> and multiplication by a fixed H is ${gloss('linear', 'f is linear when f(A) XOR f(B) = f(A XOR B). Multiplication by a fixed H in GF(2^128) is linear, so XORing two toy tags equals the toy tag of the XORed blocks.')}. XOR the toy tags: the common <code>·H</code> factor stays, giving <code>(C1 ⊕ C2)·H</code>. For distinct blocks, H is the one unknown in this toy equation.</p>
               <div id="ghash-linviz-rows" class="linviz-rows" role="img" aria-label="Toy bit rows showing T1 XOR T2 equals (C1 XOR C2) times H; the shared factor remains">
-                <p class="note linviz-idle">Run the attack below to watch the algebra collapse on the real bits.</p>
+                <p class="note linviz-idle">Run the toy below to see the raw-field equation on actual bits.</p>
               </div>
             </div>
 
@@ -519,7 +519,7 @@ export function renderApp(container: HTMLElement): void {
           </div>
 
           <div class="verifier" role="group" aria-label="Raw field-product toy verifier">
-            <h3>Server verifies</h3>
+            <h3>Toy verifier</h3>
             <p class="note">The toy verifier holds the original H and compares raw single-block products. Acceptance applies only to this deliberately insecure model. A real GCM verifier checks the framed, nonce-masked authentication tag; accepting a toy product does not establish GCM acceptance.</p>
             <div class="button-row">
               <button id="ghash-verify" aria-label="Submit forged GHASH tag">Submit forged tag</button>
