@@ -17,7 +17,8 @@ for (const width of [1280, 380, 320]) {
     // Ordinary authentication path only: no new recovery or forgery procedure.
     await page.locator('#poly-run').click();
     await expect(page.locator('#poly-output')).toContainText('Poly1305 tag:');
-    await expect(page.locator('#poly-output')).toContainText('Reusing it breaks authenticity');
+    await expect(page.locator('#poly-output')).toContainText('tag = (accumulator + s) mod 2^128');
+    await expect(page.locator('#poly-reuse-scope')).toContainText('Reusing a full-size one-time key is also unsafe');
     const output = await page.locator('#poly-output').innerText();
     expect(output).toMatch(/Poly1305 tag: [0-9a-f]{32}/);
     expect(output).toMatch(/One-time key: [0-9a-f]{64}/);

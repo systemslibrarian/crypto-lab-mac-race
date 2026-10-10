@@ -888,7 +888,7 @@ function wirePolyPanel(): void {
       byId<HTMLElement>('poly-output').textContent =
         `Poly1305 tag: ${result.tagHex}\n` +
         `One-time key: ${result.keyHex}\n` +
-        `(Tag computed mod 2^130 − 5, then reduced mod 2^128 + s.)`;
+        `(Accumulator reduced mod 2^130 − 5; tag = (accumulator + s) mod 2^128.)`;
       setStatus('Poly1305 tag computed.');
     } catch (error) {
       setStatus(`Poly1305 error: ${(error as Error).message}`, true);
