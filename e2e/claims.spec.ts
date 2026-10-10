@@ -250,7 +250,7 @@ test('Poly1305: reusing the one-time key recovers r and the server accepts the f
 // GHASH
 // ---------------------------------------------------------------------------
 
-test('GHASH: nonce reuse recovers H, the printed deltas really are the XORs, and the forgery verifies', async ({
+test('Raw GHASH toy: printed deltas match the XORs and the local product comparison verifies', async ({
   page,
 }) => {
   await open(page);
@@ -283,7 +283,7 @@ test('GHASH: nonce reuse recovers H, the printed deltas really are the XORs, and
 
   // The attack is graded by the holder of the true H, not by itself.
   expect(attack).toContain('Recovered H equals the true hidden H: YES');
-  expect(attack).toContain('Server (holds true H) accepts forgery: VALID.');
+  expect(attack).toContain('Toy verifier (holds true H) accepts raw product: VALID.');
   expect(recoveredH).toHaveLength(32);
 
   // The bit-row picture must show the same bits as the hex above it: six rows

@@ -53,8 +53,8 @@ describe('GHASH computation', () => {
   });
 });
 
-describe('Forbidden Attack (nonce reuse) — live H recovery', () => {
-  it('recovers the true, live-derived H from two reused-nonce tags', async () => {
+describe('Raw single-block field-product toy — no GCM framing or mask', () => {
+  it('recovers the true, live-derived H from two raw toy products', async () => {
     // Run several times: the demo generates a fresh random key each call,
     // so this also fuzzes the algebra across many H values.
     for (let i = 0; i < 25; i += 1) {
@@ -63,7 +63,7 @@ describe('Forbidden Attack (nonce reuse) — live H recovery', () => {
     }
   });
 
-  it('produces a forged tag the server (holding true H) accepts', async () => {
+  it('produces a raw product the toy verifier (holding true H) accepts', async () => {
     for (let i = 0; i < 25; i += 1) {
       const demo = await runGhashReuseAttackDemo();
       expect(demo.serverAccepts).toBe(true);

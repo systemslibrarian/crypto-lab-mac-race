@@ -6,7 +6,7 @@ Primitives: CRC-32/ISO-HDLC · HMAC-SHA-256 · HMAC-SHA-512 · AES-CMAC · Poly1
 
 crypto-lab-mac-race is a browser demo for CRC-32, HMAC-SHA-256, HMAC-SHA-512, AES-CMAC, and Poly1305, plus GHASH and attack panels that show where incorrect authentication constructions fail. CRC-32 is an unkeyed checksum for accidental corruption; the MACs use shared secret material to verify message integrity and origin authenticity. None of these mechanisms encrypt plaintext. The project shows how each construction behaves under correct and incorrect usage, including checksum repair, nonce/key reuse, length extension on a vulnerable prefix-MAC pattern, and timing leakage from naive comparison.
 
-A newcomer starts at a "What is a MAC?" intro card — a one-sentence framing plus a small animation of a message and secret key flowing into a fixed-size tag, and an attacker who alters the message getting rejected — so the mental model is grounded before any primitive appears. A guided tour then walks the panels in pedagogical order. Field-math mechanisms are shown as pictures, not just hex: the GHASH panel animates `T1 ⊕ T2 = (C1 ⊕ C2)·H` as stacked 128-bit bit-rows so the shared `H` term visibly cancels under XOR, and the length-extension panel draws the forged message as labelled `[secret][message][glue padding][append]` segments with the secret greyed as unknown. First-use jargon (ipad/opad, Merkle-Damgard, clamped r, GF(2^128), FIPS 198-1) carries inline hover/focus definitions.
+A newcomer starts at a "What is a MAC?" intro card — a one-sentence framing plus a small animation of a message and secret key flowing into a fixed-size tag, and an attacker who alters the message getting rejected — so the mental model is grounded before any primitive appears. A guided tour then walks the panels in pedagogical order. Field-math mechanisms are shown as pictures, not just hex: the GHASH panel animates `T1 ⊕ T2 = (C1 ⊕ C2)·H` as stacked 128-bit bit-rows showing the shared `·H` factor remains after XOR; this raw-field toy omits GCM framing and its nonce mask, and the length-extension panel draws the forged message as labelled `[secret][message][glue padding][append]` segments with the secret greyed as unknown. First-use jargon (ipad/opad, Merkle-Damgard, clamped r, GF(2^128), FIPS 198-1) carries inline hover/focus definitions.
 
 ## Exhibits
 
@@ -17,7 +17,7 @@ The intro card defines a MAC and shows a message and key flowing into a tag. The
 3. **Length-extension attack** — capture a `SHA-256(secret ∥ msg)` tag, forge an extended tag without the secret, and see a labelled diagram of the forged message layout; a side-by-side HMAC server rejects the same attack.
 4. **CMAC** — NIST SP 800-38B subkey (K1/K2) derivation and final-block handling, step-by-step.
 5. **Poly1305** (one-time only) — reuse the one-time key across two messages to recover `r` and forge a tag, with a disclosed teaching simplification of the search size (the algebra is real and runs live).
-6. **GHASH** (linear in GF(2^128)) — the Forbidden Attack: nonce reuse leaks the hash subkey `H`, visualized as bit-rows where the linear algebra collapses under XOR.
+6. **GHASH** — ordinary computation includes the ciphertext length block with no AAD, but returns an unmasked hash, not a GCM tag. A separate raw single-block `T=C·H` toy visualizes fixed-H linearity. It has no nonce, length block or authentication mask and its verifier is not a real GCM endpoint.
 7. **MAC comparison + timing attack** — a primitive comparison table and a byte-by-byte tag recovery driven by a non-constant-time compare, with an on-screen banner disclosing that the oracle reports match-length directly as an honest stand-in for averaged timing.
 
 ## When to Use It
@@ -39,6 +39,7 @@ The demo lets you run seven interactive panels: Checksum vs MAC, HMAC, CMAC, Pol
 
 - Prefix-MAC length extension with bare SHA-256(secret || message): an attacker can forge a valid MAC for extended data without knowing the secret, which is demonstrated in the length-extension panel.
 - Poly1305 one-time key reuse breaks message authenticity. The in-app demo narrows `r` to 16 bits for simple classroom brute force, not because full-size single-block reuse is intractable. For known single-block messages, reduction modulo 2^130−5 removes the large pre-reduction quotient, leaving a small number of tag-truncation carry candidates; an additional observation may be needed to distinguish them. Two tags do not universally identify one key, and arbitrary multi-block cases have different polynomial equations. The displayed forgery is checked by the real authenticator with the deliberately narrowed key. See [RFC 8439 §2.5](https://www.rfc-editor.org/rfc/rfc8439.html#section-2.5).
+- Real GCM uses padded AAD/ciphertext, the mandatory length block and the nonce-derived mask `E_K(J0)` (NIST SP 800-38D algorithms 4/5). `H=E_K(0^128)` stays the same for a fixed key even across distinct nonces. With equal-length one-block ciphertexts, no AAD and full tags under one key/nonce, tag differences involve `H²`, not the toy's `H`. Local toy acceptance does not demonstrate a real GCM forgery.
 - GHASH nonce reuse in GCM contexts: because GHASH is linear over GF(2^128), nonce reuse can expose relationships that permit forgery and broader AEAD failure.
 - Non-constant-time MAC comparison: byte-by-byte early-exit checks leak timing information that helps attackers recover or validate tag bytes incrementally.
 - CMAC implementation mistakes (subkey/padding/final-block handling): incorrect K1/K2 derivation or final block processing can produce incompatible or insecure tags.
@@ -74,9 +75,10 @@ npm run test:mutations  # checks that eight CRC/HMAC faults fail named tests
 
 The suite covers CRC-32/ISO-HDLC check and residue vectors, fixed-seed checksum repairs and four-byte target forcing through the real receiver, RFC 4231 HMAC vectors, NIST SP 800-38B AES-CMAC, RFC 8439
 Poly1305, GHASH GF(2^128) vectors and field laws, the from-scratch SHA-256
-core cross-checked against WebCrypto, and each attack end-to-end: the GHASH
-Forbidden Attack recovers a live-derived `H` and the "server" (holding the true
-`H`) confirms the forgery; the length-extension forgery is verified against a
+core cross-checked against WebCrypto, and bounded local demonstrations: the raw
+GHASH toy recovers a live-derived `H` and checks another raw field product.
+This is not AES-GCM acceptance; genuine WebCrypto GCM verification controls accept
+a published tag and reject the toy product and unmasked GHASH output; the length-extension forgery is verified against a
 full re-hash and rejected on a wrong length guess; the Poly1305 reuse forgery
 must match the tag the real key produces.
 
