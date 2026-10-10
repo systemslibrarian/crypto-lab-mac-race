@@ -22,12 +22,13 @@ export type Poly1305ReuseDemo = {
   recoveredRHex: string;
   /**
    * Bits of `r` that the classroom demo leaves free to brute-force. Real
-   * Poly1305 `r` is a ~106-bit clamped value; recovering it from just two
-   * tags is NOT tractable because each single-block accumulator is reduced
-   * mod 2^130-5 (a ~115-bit quotient the attacker cannot see). To keep the
-   * *algebra* live-runnable in a browser we constrain `r` to this many bits
-   * so `m·r < 2^130-5` and the reduction vanishes. Disclosed so nobody
-   * mistakes this for "generic reuse is 16-bit-breakable."
+   * Poly1305 `r` is a ~106-bit clamped value. This narrowing is a choice for
+   * simple classroom brute force, not a claim that full-size one-block reuse
+   * is intractable. With known single-block messages, the large pre-reduction
+   * quotient disappears modulo 2^130-5; final tag truncation leaves a small
+   * number of carry candidates. An additional observation may disambiguate
+   * candidates. Two tags do not universally identify one key, and arbitrary
+   * multi-block messages have different polynomial equations (RFC 8439 §2.5).
    */
   rSpaceBits: number;
 };
@@ -78,10 +79,9 @@ function polyOneBlockAcc(message: Uint8Array, r: bigint): bigint {
   return (m * r) % P130;
 }
 
-// Bits of `r` the browser-runnable reuse demo leaves free. With r < 2^16 the
-// single-block product m·r stays below 2^130-5, so the mod-P reduction never
-// fires and two tags recover r exactly by cheap 16-bit search. See the note on
-// Poly1305ReuseDemo.rSpaceBits for why the FULL attack is not tractable here.
+// Bits of `r` left free for simple classroom brute force. For the particular
+// 14-byte invoice messages below, r < 2^16 also keeps m·r below 2^130-5.
+// This is not a bound on full-size key-reuse attacks; see rSpaceBits above.
 export const DEMO_R_SPACE_BITS = 16;
 
 // Builds a one-time key whose `r` lives in a `DEMO_R_SPACE_BITS`-bit window.
