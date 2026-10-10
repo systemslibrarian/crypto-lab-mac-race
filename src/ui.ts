@@ -246,9 +246,9 @@ for (let rGuess = 0n; rGuess <= 0xffffn; rGuess++) {
   }
 }`;
 
-const GHASH_SRC = `// Live Forbidden Attack — nothing is hard-coded.
+const GHASH_SRC = `// Raw single-block field-product toy — not AES-GCM verification.
 // A fresh AES key is generated each run; H = E_K(0^128) via WebCrypto.
-// Two random single-block ciphertexts are tagged under the reused nonce:
+// Two random blocks share H; no nonce, length block or GCM mask:
 //   T1 = C1 * H,  T2 = C2 * H   (GHASH is linear in GF(2^128))
 //   T1 ^ T2 = (C1 ^ C2) * H
 //   H = (T1 ^ T2) * (C1 ^ C2)^(-1)
@@ -256,7 +256,7 @@ const H_true = await aesEncryptBlock(key, ZERO16);   // hidden from attacker
 const deltaT = xor16(gf128Mul(C1, H_true), gf128Mul(C2, H_true));
 const deltaC = xor16(C1, C2);
 const H = gf128Mul(deltaT, gfInverse(deltaC));        // == H_true
-// Forge any target; the server (holding H_true) confirms the tag.`;
+// Toy verifier compares a raw single-block product using H_true.`;
 
 const LENGTHEXT_SRC = `// Attacker observes tag = SHA-256(secret || message)
 // SHA-256 state IS the tag — attacker resumes from it.
@@ -293,7 +293,7 @@ const LESSON_STEPS: { panelId: string; title: string; body: string }[] = [
   { panelId: 'p5', title: '3. Why we need HMAC: length-extension', body: 'Bare SHA-256(secret || message) leaks enough internal state through its tag that an attacker can forge tags for extended messages without the secret. Forge a tag, then verify it on the broken server.' },
   { panelId: 'p2', title: '4. CMAC — block-cipher MAC', body: 'When AES is already in your stack, CMAC gives you a NIST-approved MAC built from a block cipher. Notice K1/K2 are derived from AES_K(0).' },
   { panelId: 'p3', title: '5. Poly1305 — fast, one-time only', body: 'A polynomial MAC. Reusing the one-time key destroys authenticity: the two tags become linear equations in r. The demo uses a deliberately narrowed r so the recovery runs live in your browser — the algebra is real, the search space is a teaching simplification (disclosed in the panel).' },
-  { panelId: 'p4', title: '6. GHASH — linear in GF(2^128)', body: "GHASH is what authenticates AES-GCM. It is linear in the field, so nonce reuse leaks the hash subkey H. This is the Forbidden Attack." },
+  { panelId: 'p4', title: '6. GHASH — linear in GF(2^128)', body: "GHASH is one component of AES-GCM. This raw-field toy shows fixed-H linearity, but omits GCM framing and the nonce mask; its local verifier is not an AES-GCM endpoint." },
   { panelId: 'p6', title: '7. Timing attack — non-constant-time compare', body: 'A naive byte-by-byte equality leaks prefix-match length. Watch a real byte-by-byte tag recovery driven entirely by that signal.' }
 ];
 
@@ -501,26 +501,26 @@ export function renderApp(container: HTMLElement): void {
           </div>
           <pre id="ghash-output" class="hex" role="status" aria-live="polite" aria-label="GHASH output"></pre>
 
-          <div class="attack-pane" role="group" aria-label="GHASH nonce reuse attack">
+          <div class="attack-pane" role="group" aria-label="Raw GHASH field-product toy">
             <h3>You are the attacker</h3>
-            <p class="note">Two ciphertexts encrypted under the <em>same</em> AES-GCM nonce share the same hash subkey H. With a single delta you can solve for H and forge tags for any other ciphertext.</p>
+            <p class="note" id="ghash-model-scope"><strong>Teaching scope:</strong> this is a raw single-block field-product toy: <code>T = C·H</code>. It uses no nonce, AAD, length block or nonce-derived mask. Real GCM computes GHASH over padded AAD/ciphertext plus a length block, then masks it with <code>E_K(J0)</code>. <code>H = E_K(0¹²⁸)</code> depends on the AES key and is the same even with different nonces. For equal-length one-block ciphertexts, no AAD and full tags under the same key/nonce, real GCM gives <code>ΔT = ΔC·H²</code>, not this toy's <code>ΔC·H</code>. The comparison below checks only toy products; it is not AES-GCM authentication. See <a href="https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38d.pdf" target="_blank" rel="noopener noreferrer">NIST SP 800-38D algorithms 4/5</a>.</p>
 
-            <div class="linviz" role="group" aria-label="Why nonce reuse leaks H: the linear algebra collapses">
-              <p class="linviz-lede"><strong>Why does reuse leak H?</strong> Because a single-block tag is just <code>T = C · H</code> and the field is ${gloss('linear', 'f is linear when f(A) XOR f(B) = f(A XOR B). Multiplication by a fixed H in GF(2^128) is linear, so XORing two tags equals the tag of the XORed ciphertexts.')}. Watch the two tags XOR together: everywhere the H term is <em>identical</em>, XOR cancels it — until only <code>(C1 ⊕ C2)·H</code> is left, and H is the one unknown you can now solve for.</p>
-              <div id="ghash-linviz-rows" class="linviz-rows" role="img" aria-label="Bit rows showing T1 XOR T2 equals (C1 XOR C2) times H, with the shared H term cancelling under XOR">
-                <p class="note linviz-idle">Run the attack below to watch the algebra collapse on the real bits.</p>
+            <div class="linviz" role="group" aria-label="Raw single-block multiplication by fixed H is linear">
+              <p class="linviz-lede"><strong>Why does this toy expose H?</strong> Because its raw single-block tag is <code>T = C · H</code> and multiplication by a fixed H is ${gloss('linear', 'f is linear when f(A) XOR f(B) = f(A XOR B). Multiplication by a fixed H in GF(2^128) is linear, so XORing two toy tags equals the toy tag of the XORed blocks.')}. XOR the toy tags: the common <code>·H</code> factor stays, giving <code>(C1 ⊕ C2)·H</code>. For distinct blocks, H is the one unknown in this toy equation.</p>
+              <div id="ghash-linviz-rows" class="linviz-rows" role="img" aria-label="Toy bit rows showing T1 XOR T2 equals (C1 XOR C2) times H; the shared factor remains">
+                <p class="note linviz-idle">Run the toy below to see the raw-field equation on actual bits.</p>
               </div>
             </div>
 
             <div class="button-row">
-              <button id="ghash-attack" aria-label="Run GHASH nonce reuse attack">Run nonce reuse attack →</button>
+              <button id="ghash-attack" aria-label="Run raw GHASH field-product toy">Run raw-field toy →</button>
             </div>
             <pre id="ghash-attack-output" class="hex" role="status" aria-live="polite" tabindex="0" aria-label="GHASH attack output"></pre>
           </div>
 
-          <div class="verifier" role="group" aria-label="GHASH server verifier">
-            <h3>Server verifies</h3>
-            <p class="note">After the nonce-reuse attack recovers H, the attacker can issue a forged tag for any ciphertext. The demo's local constant-time check (shown above) is the same operation a real GCM endpoint runs.</p>
+          <div class="verifier" role="group" aria-label="Raw field-product toy verifier">
+            <h3>Toy verifier</h3>
+            <p class="note">The toy verifier holds the original H and compares raw single-block products. Acceptance applies only to this deliberately insecure model. A real GCM verifier checks the framed, nonce-masked authentication tag; accepting a toy product does not establish GCM acceptance.</p>
             <div class="button-row">
               <button id="ghash-verify" aria-label="Submit forged GHASH tag">Submit forged tag</button>
               <span id="ghash-verdict" class="verdict verdict-idle">awaiting attack</span>
@@ -531,7 +531,7 @@ export function renderApp(container: HTMLElement): void {
             <strong>🔓 Forbidden Attack (Böck, Zauner, Devlin — 2016):</strong> a scan of the public web found 184 HTTPS servers and IoT devices reusing GCM nonces. Researchers extracted authentication keys and demonstrated full message forgery over real TLS.
           </div>
 
-          <p class="note">NIST SP 800-38D: GHASH is linear in ${gloss('GF(2^128)', 'a finite field of 2^128 elements: 128-bit blocks where "add" is bitwise XOR and "multiply" is polynomial multiplication modulo a fixed irreducible polynomial. "Linear" means GHASH(A) XOR GHASH(B) = GHASH(A XOR B).')}. Reusing a GCM nonce is catastrophic.</p>
+          <p class="note">NIST SP 800-38D: for a fixed input-block layout, GHASH is linear in ${gloss('GF(2^128)', 'a finite field of 2^128 elements: 128-bit blocks where "add" is bitwise XOR and "multiply" is polynomial multiplication modulo a fixed irreducible polynomial. For equal input-block layouts and fixed H, GHASH(A) XOR GHASH(B) = GHASH(A XOR B).')}. Reusing a GCM nonce is catastrophic.</p>
 
           <details class="source-toggle"><summary>Show attack implementation</summary><pre class="src" tabindex="0">${escapeHtml(GHASH_SRC)}</pre></details>
         </section>
@@ -937,7 +937,8 @@ function wireGhashPanel(): void {
       byId<HTMLElement>('ghash-output').textContent =
         `H = E_K(0^128): ${result.hHex}\n` +
         `GHASH output:   ${result.yHex}\n` +
-        `Per-block:      ${result.steps.join(' → ')}`;
+        `Per-block:      ${result.steps.join(' → ')}\n` +
+        `(No AAD; length block included; not an AES-GCM tag.)`;
       setStatus('GHASH computed.');
     } catch (error) {
       setStatus(`GHASH error: ${(error as Error).message}`, true);
@@ -959,7 +960,7 @@ function wireGhashPanel(): void {
       );
       byId<HTMLElement>('ghash-attack-output').textContent =
         `Live H = E_K(0^128) from a fresh random AES key (hidden from attacker).\n` +
-        `Observed under reused nonce:\n` +
+        `Toy observations under shared H (no nonce):\n` +
         `  C1 ${attack.c1Hex}  →  T1 ${attack.t1Hex}\n` +
         `  C2 ${attack.c2Hex}  →  T2 ${attack.t2Hex}\n\n` +
         `Δ ciphertext: ${attack.deltaCHex}\n` +
@@ -968,10 +969,10 @@ function wireGhashPanel(): void {
         `Recovered H equals the true hidden H: ${attack.hMatchesTrue ? 'YES' : 'no'}\n\n` +
         `Forge target C3 ${attack.targetCiphertextHex}\n` +
         `Forged tag       ${attack.forgedTagHex}\n` +
-        `Server (holds true H) accepts forgery: ${attack.serverAccepts ? 'VALID' : 'invalid'}.\n\n` +
+        `Toy verifier (holds true H) accepts raw product: ${attack.serverAccepts ? 'VALID' : 'invalid'}.\n\n` +
         attack.note;
       setVerdictIdle(byId<HTMLElement>('ghash-verdict'), 'forged — submit it');
-      setStatus('GHASH nonce reuse attack succeeded.');
+      setStatus('Raw GHASH field-product toy completed; not AES-GCM verification.');
     } catch (error) {
       setStatus(`GHASH attack error: ${(error as Error).message}`, true);
     }

@@ -137,15 +137,17 @@ function gfInv(x: Uint8Array): Uint8Array {
 }
 
 /**
- * Live Forbidden Attack. Nothing here is hard-coded: we generate a fresh AES
- * key each run, derive the real hash subkey H = E_K(0^128) via WebCrypto, and
- * pick two random single-block ciphertexts. Reusing the same nonce means both
- * are authenticated with the same H, so the attacker sees
- *   T1 = C1 · H,   T2 = C2 · H   (single-block GHASH, no length block).
- * Because GHASH is linear over GF(2^128):
+ * Raw single-block field-product toy, not an AES-GCM attack/verifier.
+ * A fresh AES key supplies H = E_K(0^128), which depends on the key, not the
+ * nonce. This toy has no nonce, AAD, length block or authentication mask:
+ *   T1 = C1 · H,   T2 = C2 · H.
+ * Multiplication by fixed H is linear over GF(2^128):
  *   ΔT = T1 ⊕ T2 = (C1 ⊕ C2) · H = ΔC · H,   so   H = ΔT · ΔC⁻¹.
- * We then forge a tag for a fresh target ciphertext and the "server" (which
- * still holds the true H) independently confirms the forgery is accepted.
+ * The local check compares raw field products. Actual GCM includes the length
+ * block and nonce-derived mask (NIST SP 800-38D algorithms 4/5). For equal-length
+ * one-block ciphertexts, no AAD and full tags under one key/nonce, ΔT = ΔC·H².
+ * Keep the exported function name for existing callers; it does not imply
+ * that the displayed bare-product tag will pass an AES-GCM endpoint.
  */
 export async function runGhashReuseAttackDemo(): Promise<GhashReuseDemo> {
   const key = crypto.getRandomValues(new Uint8Array(16));
@@ -154,7 +156,7 @@ export async function runGhashReuseAttackDemo(): Promise<GhashReuseDemo> {
   const c1 = crypto.getRandomValues(new Uint8Array(BLOCK_SIZE));
   const c2 = crypto.getRandomValues(new Uint8Array(BLOCK_SIZE));
 
-  // Observed authentication tags for the two nonce-reusing messages.
+  // Toy tags: raw field products with no nonce or GCM framing.
   const t1 = gf128Mul(c1, h);
   const t2 = gf128Mul(c2, h);
 
@@ -167,8 +169,7 @@ export async function runGhashReuseAttackDemo(): Promise<GhashReuseDemo> {
   const target = crypto.getRandomValues(new Uint8Array(BLOCK_SIZE));
   const forgedTag = gf128Mul(target, recoveredH);
 
-  // The server still holds the *true* H and computes the genuine tag; if the
-  // forgery matches, the attack is verified end-to-end (not self-graded).
+  // The toy verifier holds true H and compares raw products, not AES-GCM tags.
   const genuineTag = gf128Mul(target, h);
   const serverAccepts = ctEq16(forgedTag, genuineTag);
 
@@ -185,7 +186,7 @@ export async function runGhashReuseAttackDemo(): Promise<GhashReuseDemo> {
     forgedTagHex: bytesToHex(forgedTag),
     serverAccepts,
     forgedValid: serverAccepts,
-    note: 'H was derived live from a fresh AES key; nonce reuse gives ΔT = ΔC·H, so H = ΔT·ΔC⁻¹ and forgeries follow for any ciphertext.'
+    note: 'Raw single-block toy only: T = C·H. No nonce, AAD, length block or GCM mask is used. The local comparison is not AES-GCM verification.'
   };
 }
 
