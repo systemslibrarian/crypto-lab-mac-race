@@ -142,11 +142,12 @@ a:focus-visible {
 
 .panel-grid {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: 1rem;
 }
 
 .panel {
+  min-width: 0;
   border: 1px solid var(--line);
   border-radius: 1rem;
   background: var(--panel);
@@ -171,7 +172,10 @@ a:focus-visible {
   padding: 0.25rem 0.65rem;
   border: 1px solid var(--line);
   font-size: 0.875rem;
-  white-space: nowrap;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: center;
 }
 
 .chip-category {
