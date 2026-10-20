@@ -31,7 +31,6 @@ export const NONTEXT_BASELINE: Record<
   "control-boundary|button#tour-end": { ratio: 2.64, required: 3.0, unverified: false },
   "control-boundary|button#tour-next": { ratio: 2.59, required: 3.0, unverified: false },
   "control-boundary|button#tour-prev": { ratio: 2.55, required: 3.0, unverified: false },
-  "control-boundary|button#tour-start": { ratio: 2.7, required: 3.0, unverified: false },
   "control-boundary|input#cmac-verify-tag": { ratio: 2.76, required: 3.0, unverified: false },
   "control-boundary|input#hmac-verify-tag": { ratio: 2.76, required: 3.0, unverified: false },
   "control-boundary|input#le-append": { ratio: 2.88, required: 3.0, unverified: false },

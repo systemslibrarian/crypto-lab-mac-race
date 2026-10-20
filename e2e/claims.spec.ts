@@ -1,4 +1,5 @@
 import { expect, test as base, type Locator, type Page } from '@playwright/test';
+import { createHash } from 'node:crypto';
 
 /**
  * Functional gate on the claims this lab makes on screen.
@@ -26,6 +27,15 @@ const test = base.extend<{ pageErrors: string[] }>({
     },
     { auto: true },
   ],
+});
+
+test.afterEach(async ({ page }) => {
+  if (!process.env.MUTATION_ASSETS) return;
+  const assets = JSON.parse(process.env.MUTATION_ASSETS) as Record<string, string>;
+  for (const [path, digest] of Object.entries(assets)) {
+    const response = await page.request.get(`./assets/${path}`);
+    expect(createHash('sha256').update(await response.body()).digest('hex'), `MUTATION_ASSET_MISMATCH ${path}`).toBe(digest);
+  }
 });
 
 async function open(page: Page): Promise<void> {
@@ -643,10 +653,10 @@ test('checksum edits retire verdicts; identical input, invalid targets and lengt
 // Guided tour
 // ---------------------------------------------------------------------------
 
-test('guided tour highlights the seven panels in pedagogical order', async ({ page }) => {
+test('guided tour highlights the eight panels in pedagogical order', async ({ page }) => {
   await open(page);
 
-  const order = ['p0', 'p1', 'p5', 'p2', 'p3', 'p4', 'p6'];
+  const order = ['p0', 'p1', 'p5', 'p7', 'p2', 'p3', 'p4', 'p6'];
   await page.locator('#tour-start').click();
 
   for (let step = 0; step < order.length; step += 1) {
@@ -695,4 +705,124 @@ test('nothing marked hidden is painted', async ({ page }) => {
       .filter((x) => x.display !== 'none'),
   );
   expect(painted, 'elements marked hidden are painted').toEqual([]);
+});
+
+// Raw CBC-MAC claims: reconstruct splices entirely from displayed public values.
+const cbcHex = (s: string) => Buffer.from(s, 'utf8').toString('hex');
+const cbcNegative = "A valid raw CBC-MAC tag does not authenticate the message's length: when the receiver accepts more than one length, every check this verifier performs passes on a message nobody tagged.";
+async function cbcForge(page: Page): Promise<void> { await page.locator('#cbc-tag').click(); await expect(page.locator('#cbc-forge')).toBeEnabled(); await page.locator('#cbc-forge').click(); await expect(page.locator('#cbc-status')).toContainText('All receiver decisions'); }
+
+test('CBC-MAC one-query splice is derived from public bytes and accepted with alarm semantics', async ({ page }) => {
+  await open(page);
+  await expect(page.locator('#cbc-agreed')).toHaveValue('16');
+  await page.locator('#cbc-tag').click(); await expect(page.locator('#cbc-forge')).toBeEnabled();
+  for (const v of ['raw', 'fixed', 'prepended', 'cmac']) await expect(page.locator(`#cbc-verdict-${v}`)).toHaveText('✓ honest tag verified');
+  const m = cbcHex(await page.locator('#cbc-message').inputValue()), tag = await page.locator('[data-cbc="tag"]').innerText();
+  await expect(page.locator('[data-cbc="queries"]')).toHaveText('1');
+  await page.locator('#cbc-forge').click(); await expect(page.locator('[data-cbc="forged"]')).toBeVisible();
+  const expected = m + xorHex(m, tag);
+  await expect(page.locator('[data-cbc="forged"]')).toHaveText(expected);
+  await expect(page.locator('[data-cbc="submitted"]')).toHaveText(tag);
+  await expect(page.locator('#cbc-card-raw [data-cbc="expected"]')).toHaveText(tag);
+  await expect(page.locator('#cbc-verdict-raw')).toHaveText('✕ ACCEPTED — FORGED');
+  await expect(page.locator('#cbc-verdict-raw')).toHaveClass(/verdict-alarm/);
+  await expect(page.locator('[data-cbc="raw-checks"]')).toHaveText('Block alignment: PASS; tag equality: PASS.');
+  await expect(page.locator('[data-cbc="negative-heading"]')).toHaveText('TAG VALID — AND FORGED');
+  await expect(page.locator('#cbc-negative')).toHaveText(cbcNegative);
+  await expect(page.locator('#cbc-negative')).toBeVisible();
+  await page.locator('#cbc-all').click();
+  const rows = page.locator('#cbc-chain tbody tr'); await expect(rows).toHaveCount(2);
+  await expect(rows.nth(0).locator('td').nth(1)).toHaveText(m);
+  await expect(rows.nth(0).locator('[data-cbc="chain-value"]')).toHaveText(tag);
+  await expect(rows.nth(1).locator('td').nth(1)).toHaveText(m);
+  await expect(rows.nth(1).locator('[data-cbc="chain-value"]')).toHaveText(tag);
+  await expect(rows.nth(1).locator('[data-cbc="honest-value"]')).toHaveText(tag);
+});
+
+test('CBC-MAC fixes reject with the actual length or tag cause, including own-oracle recipes', async ({ page }) => {
+  await open(page); await cbcForge(page);
+  await expect(page.locator('#cbc-verdict-fixed')).toHaveText('✓ rejected — wrong length');
+  await expect(page.locator('#cbc-verdict-fixed')).toHaveClass(/verdict-accept/);
+  await expect(page.locator('[data-cbc="length-block"]')).toHaveText('00000000000000000000000000000020');
+  const m = cbcHex(await page.locator('#cbc-message').inputValue());
+  for (const v of ['prepended', 'cmac']) {
+    await expect(page.locator(`#cbc-verdict-${v}`)).toHaveText('✓ rejected — tag mismatch');
+    const card = page.locator(`#cbc-card-${v}`), ownTag = await card.locator('[data-cbc="own-tag"]').innerText();
+    await expect(card.locator('[data-cbc="own-forged"]')).toHaveText(m + xorHex(m, ownTag));
+    await expect(card.locator('[data-cbc="own-target"]')).toHaveText(ownTag);
+    await expect(card.locator('[data-cbc="own-verdict"]')).toHaveText('✓ rejected — tag mismatch');
+    await expect(card.locator('[data-cbc="own-verdict"]')).toHaveClass(/verdict-accept/);
+    await expect(card).toContainText('Honest tag verification: PASS');
+  }
+  await page.locator('#cbc-agreed').selectOption('32'); await cbcForge(page);
+  await expect(page.locator('#cbc-verdict-fixed')).toHaveText('✕ ACCEPTED — FORGED');
+  await expect(page.locator('#cbc-verdict-fixed')).toHaveClass(/verdict-alarm/);
+  await expect(page.locator('#cbc-card-fixed')).toContainText('Agreement must constrain both ends');
+});
+
+test('CBC-MAC general two-tag splice supports one and multiple blocks and real converging chains', async ({ page }) => {
+  await open(page); await page.locator('#cbc-attack').selectOption('two');
+  for (const [m, other] of [['0123456789abcdef', 'SECOND BLOCK!!!!'], ['0123456789abcdef'.repeat(2), 'SECOND BLOCK!!!!'.repeat(3)]]) {
+    await page.locator('#cbc-message').fill(m!); await page.locator('#cbc-prime').fill(other!);
+    await cbcForge(page);
+    const tag = await page.locator('[data-cbc="tag"]').innerText(), target = await page.locator('[data-cbc="target-tag"]').innerText(), a = cbcHex(m!), b = cbcHex(other!);
+    await expect(page.locator('[data-cbc="queries"]')).toHaveText('2');
+    await expect(page.locator('[data-cbc="forged"]')).toHaveText(a + xorHex(b.slice(0, 32), tag) + b.slice(32));
+    await expect(page.locator('[data-cbc="submitted"]')).toHaveText(target);
+    await expect(page.locator('#cbc-verdict-raw')).toHaveText('✕ ACCEPTED — FORGED');
+    for (const v of ['prepended', 'cmac']) {
+      const card = page.locator(`#cbc-card-${v}`), ownTag = await card.locator('[data-cbc="own-tag"]').innerText();
+      await expect(card.locator('[data-cbc="own-forged"]')).toHaveText(a + xorHex(b.slice(0, 32), ownTag) + b.slice(32));
+      await expect(card.locator('[data-cbc="own-verdict"]')).toHaveText('✓ rejected — tag mismatch');
+    }
+    await page.locator('#cbc-all').click(); const rows = page.locator('#cbc-chain tbody tr');
+    await expect(rows).toHaveCount((m!.length + other!.length) / 16);
+    for (let i = m!.length / 16; i < await rows.count(); i++) {
+      expect(await rows.nth(i).locator('[data-cbc="chain-value"]').innerText()).toBe(await rows.nth(i).locator('[data-cbc="honest-value"]').innerText());
+    }
+    await expect(rows.last().locator('[data-cbc="chain-value"]')).toHaveText(target);
+  }
+});
+
+test('CBC-MAC validation, no-op preservation and edits or rotation retire all claims', async ({ page }) => {
+  await open(page); await cbcForge(page);
+  const firstTag = await page.locator('[data-cbc="tag"]').innerText();
+  await page.locator('#cbc-message').dispatchEvent('input'); await expect(page.locator('#cbc-negative')).toBeVisible();
+  await page.locator('#cbc-rotate').click(); await expect(page.locator('#cbc-negative')).toBeHidden();
+  await expect(page.locator('#cbc-forge')).toBeDisabled();
+  for (const v of ['raw', 'fixed', 'prepended', 'cmac']) await expect(page.locator(`#cbc-verdict-${v}`)).toHaveText('inputs changed — run again');
+  await cbcForge(page); expect(await page.locator('[data-cbc="tag"]').innerText()).not.toBe(firstTag);
+  await page.locator('#cbc-message').fill('short'); await page.locator('#cbc-tag').click();
+  await expect(page.locator('#cbc-status')).toContainText('NOT_BLOCK_ALIGNED: Received 5 bytes; next valid length is 16');
+  await expect(page.locator('#cbc-negative')).toBeHidden(); await expect(page.locator('[data-cbc="forged"]')).toHaveCount(0);
+  await page.locator('#cbc-message').fill(''); await page.locator('#cbc-tag').click();
+  await expect(page.locator('#cbc-status')).toContainText('EMPTY_MESSAGE');
+  await page.locator('#cbc-message').fill('é'.repeat(8)); await cbcForge(page);
+  await expect(page.locator('[data-cbc="forged"]')).toHaveText(/^c3a9/);
+  await page.locator('#cbc-attack').selectOption('two'); await expect(page.locator('#cbc-negative')).toBeHidden();
+  await cbcForge(page); await page.locator('#cbc-prime').fill('changed');
+  await expect(page.locator('#cbc-negative')).toBeHidden(); await expect(page.locator('#cbc-chain-area')).toBeHidden();
+});
+
+test('CBC-MAC late AES completions cannot restore retired verdicts', async ({ page }) => {
+  await open(page);
+  await page.evaluate(() => {
+    const encrypt = crypto.subtle.encrypt.bind(crypto.subtle);
+    (window as any).__cbcRelease = null;
+    crypto.subtle.encrypt = (async (...args: Parameters<SubtleCrypto['encrypt']>) => {
+      if ((args[0] as any).name === 'AES-CBC') {
+        await new Promise<void>(resolve => { (window as any).__cbcRelease = resolve; });
+        crypto.subtle.encrypt = encrypt;
+      }
+      return encrypt(...args);
+    }) as SubtleCrypto['encrypt'];
+  });
+  await page.locator('#cbc-tag').click();
+  await expect.poll(() => page.evaluate(() => typeof (window as any).__cbcRelease)).toBe('function');
+  await page.locator('#cbc-message').fill('EDITED MESSAGE!!');
+  await page.evaluate(() => (window as any).__cbcRelease());
+  await expect(page.locator('#cbc-status')).toContainText('retired');
+  await expect(page.locator('[data-cbc="tag"]')).toHaveCount(0);
+  await expect(page.locator('#cbc-forge')).toBeDisabled();
+  await cbcForge(page); await expect(page.locator('#cbc-negative')).toBeVisible();
 });

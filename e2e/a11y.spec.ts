@@ -1,5 +1,5 @@
 import { test } from '@playwright/test';
-import { boot, driveAllStates, expectBaselineNotStale, NARROW } from './gate';
+import { boot, driveAllStates, driveCbcMac, expectBaselineNotStale, NARROW } from './gate';
 
 /**
  * WCAG A/AA regression gate for the dark-only lab. It scans every exhibit's
@@ -21,4 +21,10 @@ test('no WCAG A/AA violations in dark theme at 380px', async ({ page }) => {
   // The non-text baseline was captured at this width. The tour controls wrap
   // differently here, so this is the drive that reaches every baselined state.
   expectBaselineNotStale();
+});
+
+test('CBC-MAC extension accessibility at 320px', async ({ page }) => {
+  test.setTimeout(180000);
+  await page.setViewportSize({ width: 320, height: 900 }); await boot(page);
+  await driveCbcMac(page, '320px');
 });

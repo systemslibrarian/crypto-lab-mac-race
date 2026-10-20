@@ -1,24 +1,25 @@
 # crypto-lab-mac-race
 
-Primitives: CRC-32/ISO-HDLC · HMAC-SHA-256 · HMAC-SHA-512 · AES-CMAC · Poly1305 · GHASH
+Primitives: CRC-32/ISO-HDLC · HMAC-SHA-256 · HMAC-SHA-512 · Raw CBC-MAC · AES-CMAC · Poly1305 · GHASH
 
 ## What It Is
 
-crypto-lab-mac-race is a browser demo for CRC-32, HMAC-SHA-256, HMAC-SHA-512, AES-CMAC, and Poly1305, plus GHASH and attack panels that show where incorrect authentication constructions fail. CRC-32 is an unkeyed checksum for accidental corruption; the MACs use shared secret material to verify message integrity and origin authenticity. None of these mechanisms encrypt plaintext. The project shows how each construction behaves under correct and incorrect usage, including checksum repair, nonce/key reuse, length extension on a vulnerable prefix-MAC pattern, and timing leakage from naive comparison.
+crypto-lab-mac-race is a browser demo for CRC-32, HMAC-SHA-256, HMAC-SHA-512, raw CBC-MAC, AES-CMAC, and Poly1305, plus GHASH and attack panels that show where incorrect authentication constructions fail. CRC-32 is an unkeyed checksum for accidental corruption; the MACs use shared secret material to verify message integrity and origin authenticity. None of these mechanisms encrypt plaintext. The project shows how each construction behaves under correct and incorrect usage, including checksum repair, nonce/key reuse, length extension on a vulnerable prefix-MAC pattern, and timing leakage from naive comparison.
 
 A newcomer starts at a "What is a MAC?" intro card — a one-sentence framing plus a small animation of a message and secret key flowing into a fixed-size tag, and an attacker who alters the message getting rejected — so the mental model is grounded before any primitive appears. A guided tour then walks the panels in pedagogical order. Field-math mechanisms are shown as pictures, not just hex: the GHASH panel animates `T1 ⊕ T2 = (C1 ⊕ C2)·H` as stacked 128-bit bit-rows showing the shared `·H` factor remains after XOR; this raw-field toy omits GCM framing and its nonce mask, and the length-extension panel draws the forged message as labelled `[secret][message][glue padding][append]` segments with the secret greyed as unknown. First-use jargon (ipad/opad, Merkle-Damgard, clamped r, GF(2^128), FIPS 198-1) carries inline hover/focus definitions.
 
 ## Exhibits
 
-The intro card defines a MAC and shows a message and key flowing into a tag. The guided tour covers seven lessons:
+The intro card defines a MAC and shows a message and key flowing into a tag. The guided tour covers eight lessons:
 
 1. **Checksum vs MAC** — CRC-32 catches flipped bits and a naive tamper, then accepts a repaired checksum or four-byte forced target. HMAC-SHA-256 rejects the same changed message until the optional key-leak toggle is enabled.
 2. **HMAC** (the safe default) — step-through of the ipad/opad nested construction, an avalanche bit-diff grid with a "why ~50% flip matters" security note, and a server verifier.
 3. **Length-extension attack** — capture a `SHA-256(secret ∥ msg)` tag, forge an extended tag without the secret, and see a labelled diagram of the forged message layout; a side-by-side HMAC server rejects the same attack.
-4. **CMAC** — NIST SP 800-38B subkey (K1/K2) derivation and final-block handling, step-by-step.
-5. **Poly1305** (one-time only) — reuse the one-time key across two messages to recover `r` and forge a tag, with a disclosed teaching simplification of the search size (the algebra is real and runs live).
-6. **GHASH** — ordinary computation includes the ciphertext length block with no AAD, but returns an unmasked hash, not a GCM tag. A separate raw single-block `T=C·H` toy visualizes fixed-H linearity. It has no nonce, length block or authentication mask and its verifier is not a real GCM endpoint.
-7. **MAC comparison + timing attack** — a primitive comparison table and a byte-by-byte tag recovery driven by a non-constant-time compare, with an on-screen banner disclosing that the oracle reports match-length directly as an honest stand-in for averaged timing.
+4. **Raw CBC-MAC — fixed length only** — get one or two real tags, construct a longer message without the key, then compare the vulnerable receiver with agreed-length, length-prepended and CMAC checks. The trace shows the exact chain cancellation that motivates CMAC.
+5. **CMAC** — NIST SP 800-38B subkey (K1/K2) derivation and final-block handling, step-by-step.
+6. **Poly1305** (one-time only) — reuse the one-time key across two messages to recover `r` and forge a tag, with a disclosed teaching simplification of the search size (the algebra is real and runs live).
+7. **GHASH** — ordinary computation includes the ciphertext length block with no AAD, but returns an unmasked hash, not a GCM tag. A separate raw single-block `T=C·H` toy visualizes fixed-H linearity. It has no nonce, length block or authentication mask and its verifier is not a real GCM endpoint.
+8. **MAC comparison + timing attack** — a primitive comparison table and a byte-by-byte tag recovery driven by a non-constant-time compare, with an on-screen banner disclosing that the oracle reports match-length directly as an honest stand-in for averaged timing.
 
 ## When to Use It
 
@@ -33,10 +34,11 @@ The intro card defines a MAC and shows a message and key flowing into a tag. The
 
 **[systemslibrarian.github.io/crypto-lab-mac-race](https://systemslibrarian.github.io/crypto-lab-mac-race/)**
 
-The demo lets you run seven interactive panels: Checksum vs MAC, HMAC, CMAC, Poly1305, GHASH, a SHA-256 length-extension attack, and a timing-attack comparison for naive vs constant-time verification. You can edit messages and attack inputs, then recompute outputs to observe how checksums, tags, and attack outcomes change. It does not provide encrypt/decrypt workflows; it is focused on message authentication behavior and misuse demonstrations.
+The demo lets you run eight interactive panels: Checksum vs MAC, HMAC, Raw CBC-MAC, CMAC, Poly1305, GHASH, a SHA-256 length-extension attack, and a timing-attack comparison for naive vs constant-time verification. You can edit messages and attack inputs, then recompute outputs to observe how checksums, tags, and attack outcomes change. It does not provide encrypt/decrypt workflows; it is focused on message authentication behavior and misuse demonstrations.
 
 ## What Can Go Wrong
 
+- Raw CBC-MAC accepts a spliced longer message when lengths are unrestricted. An agreed-length receiver must share that restriction with its sender. The length-prepended and CMAC controls also test the recipe against their own oracles; they use separate keys, because exposing raw CBC-MAC under a CMAC key creates a different cross-protocol attack.
 - Prefix-MAC length extension with bare SHA-256(secret || message): an attacker can forge a valid MAC for extended data without knowing the secret, which is demonstrated in the length-extension panel.
 - Poly1305 one-time key reuse breaks message authenticity. The in-app demo narrows `r` to 16 bits for simple classroom brute force, not because full-size single-block reuse is intractable. For known single-block messages, reduction modulo 2^130−5 removes the large pre-reduction quotient, leaving a small number of tag-truncation carry candidates; an additional observation may be needed to distinguish them. Two tags do not universally identify one key, and arbitrary multi-block cases have different polynomial equations. The displayed forgery is checked by the real authenticator with the deliberately narrowed key. See [RFC 8439 §2.5](https://www.rfc-editor.org/rfc/rfc8439.html#section-2.5).
 - Real GCM uses padded AAD/ciphertext, the mandatory length block and the nonce-derived mask `E_K(J0)` (NIST SP 800-38D algorithms 4/5). `H=E_K(0^128)` stays the same for a fixed key even across distinct nonces. With equal-length one-block ciphertexts, no AAD and full tags under one key/nonce, tag differences involve `H²`, not the toy's `H`. Local toy acceptance does not demonstrate a real GCM forgery.
@@ -70,7 +72,8 @@ self-tests:
 npm test        # KAT / property / forgery-rejection unit tests
 npx playwright install chromium firefox webkit
 npm run test:a11y  # browser gate (Playwright): on-screen claims + axe-core WCAG A/AA
-npm run test:mutations  # checks that eight CRC/HMAC faults fail named tests
+npm run test:mutations  # original eight CRC/HMAC faults, unchanged
+npm run test:mutations:cbcmac  # six raw-CBC-MAC / CMAC faults
 ```
 
 The suite covers CRC-32/ISO-HDLC check and residue vectors, fixed-seed checksum repairs and four-byte target forcing through the real receiver, RFC 4231 HMAC vectors, NIST SP 800-38B AES-CMAC, RFC 8439
@@ -92,6 +95,35 @@ accepts while the HMAC server rejects every one. The browser gate scans the
 dark-only page at desktop and phone widths in Chromium, and checks the core lesson in
 Firefox and WebKit. The unit, browser, and mutation gates run in CI before
 every Pages deploy.
+
+The raw-CBC-MAC extension adds 19 unit tests (85 total). The byte-level CMAC
+API preserves the existing string/passphrase-to-AES-256 behavior and permits
+exact AES-128/256 vectors through the original WebCrypto block path. Pins:
+
+- NIST SP 800-38A F.1.1/F.1.5 first AES-128/256 ECB blocks.
+- RFC 4493 §4: all four AES-128 CMAC examples (0, 16, **40**, 64 bytes) and both subkeys.
+- NIST CSRC `AES_CMAC.pdf`: all four AES-256 examples (0, 16, **20**, 64 bytes).
+  The 2016 SP 800-38B update moved its former Appendix D examples to CSRC;
+  the old test comment is re-anchored to that actual file.
+- A **derived** raw-CBC-MAC check: fold SP 800-38A F.2.1’s IV into its first
+  plaintext block, then compare the zero-IV MAC with the published last CBC
+  ciphertext. This is not a published CBC-MAC vector.
+
+Independent noble AES/CMAC checks cover 100 random 1–8-block raw chains and
+all message lengths 0–100. One- and two-query algebra is tested for 100 random
+keys, including the own-CMAC-oracle control. Another independent regression
+pins the shared-key cross-protocol caveat, so the comparison cannot silently
+reintroduce it. Shipping crypto does not call noble.
+
+Five browser claims reconstruct forged bytes from printed messages/tags, check
+actual aligned chain convergence and every verdict cause/style, exercise the
+negative claim, UTF-8, general splices, mismatched sender/receiver lengths,
+no-op preservation, retirement and delayed AES completions. The tour has eight
+steps. Accessibility walks include the new states at desktop, 380px and 320px.
+`cbcmac-mutation-evidence.json` records actual patches, successful changed builds,
+named zero-retry assertion failures, exact restoration and passing owning tests.
+Browser mutation runs verify served-JavaScript identity. The original CRC
+mutation runner is unchanged.
 
 ## Related Demos
 

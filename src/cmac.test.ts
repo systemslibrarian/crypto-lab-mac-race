@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { computeCmac, runCmacSelfTest, verifyCmac } from './cmac';
 
-// NIST SP 800-38B / RFC 4493 AES-CMAC test vectors.
+// NIST CSRC Examples with Intermediate Values, AES_CMAC.pdf, CMAC-AES256 #2.
 // The demo derives an AES-256 key when given 64 hex chars, so we use the
-// AES-256 CMAC example from NIST SP 800-38B (Appendix D.3, Example 10).
+// AES-256 CMAC example. SP 800-38B's 2016 update moved Appendix D's examples
+// to the CSRC examples page; do not retain the obsolete example numbering.
 const KEY_256 =
   '603deb1015ca71be2b73aef0857d7781' + '1f352c073b6108d72d9810a30914dff4';
 
@@ -12,7 +13,7 @@ const KEY_256 =
 // hex-key path used by the self-test, then add string-message round-trips.
 
 describe('AES-CMAC known-answer vectors', () => {
-  it('reproduces the SP 800-38B AES-256 single-block tag (self-test)', async () => {
+  it('reproduces the CSRC AES_CMAC AES-256 single-block tag (self-test)', async () => {
     expect(await runCmacSelfTest()).toBe(true);
   });
 

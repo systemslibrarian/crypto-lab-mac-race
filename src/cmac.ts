@@ -67,7 +67,8 @@ function leftShiftBlock(block: Uint8Array): Uint8Array {
   return out;
 }
 
-async function aesBlockEncrypt(keyBytes: Uint8Array, block: Uint8Array): Promise<Uint8Array> {
+export async function aesBlockEncrypt(keyBytes: Uint8Array, block: Uint8Array): Promise<Uint8Array> {
+  if (![16, 32].includes(keyBytes.length) || block.length !== BLOCK_SIZE) throw new Error('AES needs a 16- or 32-byte key and exactly one 16-byte block');
   const key = await crypto.subtle.importKey('raw', keyBytes as BufferSource, { name: 'AES-CBC' }, false, ['encrypt']);
   const iv = new Uint8Array(BLOCK_SIZE);
   const encrypted = await crypto.subtle.encrypt({ name: 'AES-CBC', iv }, key, block as BufferSource);
@@ -116,6 +117,13 @@ export async function computeCmac(message: string, keyInput: string): Promise<Cm
 
 async function computeCmacBytes(messageBytes: Uint8Array, keyInput: string): Promise<CmacResult> {
   const keyBytes = await deriveAes256Key(keyInput);
+  return cmacBytes(keyBytes, messageBytes);
+}
+
+/** Additive byte API; the existing string/passphrase API still derives AES-256. */
+export async function cmacBytes(keyBytes: Uint8Array, messageBytes: Uint8Array): Promise<CmacResult> {
+  keyBytes = new Uint8Array(keyBytes);
+  messageBytes = new Uint8Array(messageBytes);
   const { k1, k2 } = await deriveSubkeys(keyBytes);
   const blocks = splitBlocks(messageBytes);
 

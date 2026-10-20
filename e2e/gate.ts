@@ -18,7 +18,7 @@ export const NARROW = { width: 380, height: 800 };
  *
  *  2. EVERY SCAN ASSERTS ITS CONTENT IS PRESENT FIRST, and there are scans well
  *     past first paint. axe over an empty container passes having checked
- *     nothing, and every one of this lab's seven exhibits computes into an output
+ *     nothing, and every one of this lab's eight exhibits computes into an output
  *     panel that is empty until its button is pressed.
  *
  *  3. `violations` IS NOT THE WHOLE ORACLE. See `scan`.
@@ -96,7 +96,7 @@ export async function boot(page: Page): Promise<void> {
   ).toBe(true);
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
 
-  await expect(page.locator('.page section.panel')).toHaveCount(7);
+  await expect(page.locator('.page section.panel')).toHaveCount(8);
   await expect(page.locator('#hmac-run')).toBeVisible();
 
   await settle(page);
@@ -378,4 +378,17 @@ export async function driveAllStates(page: Page, theme: string): Promise<void> {
   await expect(page.locator('#tour-body')).toBeVisible();
   await scan(page, `${theme} / tour`);
   await page.locator('#tour-end').click();
+  await driveCbcMac(page, theme);
+}
+
+export async function driveCbcMac(page: Page, theme: string): Promise<void> {
+  await page.locator('#cbc-tag').click(); await expect(page.locator('#cbc-forge')).toBeEnabled();
+  await scan(page, `${theme} / CBC-MAC honest tags`);
+  await page.locator('#cbc-forge').click(); await expect(page.locator('[data-cbc="forged"]')).toBeVisible();
+  await page.locator('#cbc-all').click(); await scan(page, `${theme} / CBC-MAC forgery and four verifiers`);
+  await page.locator('#cbc-attack').selectOption('two'); await page.locator('#cbc-tag').click(); await expect(page.locator('#cbc-forge')).toBeEnabled();
+  await page.locator('#cbc-forge').click(); await expect(page.locator('[data-cbc="forged"]')).toBeVisible();
+  await page.locator('#cbc-all').click(); await scan(page, `${theme} / CBC-MAC general splice`);
+  await page.locator('#cbc-message').fill('short'); await page.locator('#cbc-tag').click();
+  await scan(page, `${theme} / CBC-MAC validation and retirement`);
 }

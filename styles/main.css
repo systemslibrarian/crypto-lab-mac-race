@@ -338,6 +338,10 @@ td {
   padding: 1rem;
   margin-bottom: 1rem;
 }
+
+/* The taller lesson page changes the body's gradient beneath this control.
+   Keep its boundary above 3:1 at every scroll/hover state. */
+#tour-start { border-color: #80acd9; }
 .tour-head {
   display: flex;
   justify-content: space-between;
@@ -1046,3 +1050,23 @@ button.secondary {
 .cl-hero-why-label{display:block;font-size:.68rem;font-weight:700;letter-spacing:.14em;}
 .cl-hero-why-text{margin:.35rem 0 0;font-size:.95rem;line-height:1.5;}
 @media (max-width:640px){.cl-hero{flex-direction:column;}.cl-hero-main{flex-basis:auto;min-width:0;}.cl-hero-why{flex-basis:auto;width:100%;}}
+
+/* Extension: raw CBC-MAC; original lesson styles are unchanged. */
+.cbcmac-panel,.cbcmac-panel #cbc-chain-area,.cbcmac-panel #cbc-forged,.cbcmac-panel #cbc-public{min-width:0;max-width:100%}
+.cbcmac-panel .cbc-inputs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem}
+.cbcmac-panel .cbc-verifiers{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1rem;margin:1.5rem 0}
+.cbc-verifier{min-width:0;padding:1rem;border:1px solid var(--line-strong);border-radius:10px;background:var(--bg-alt)}
+.cbcmac-panel code{overflow-wrap:anywhere;word-break:break-all;white-space:normal}
+.cbcmac-panel .verdict{white-space:normal;max-width:100%;line-height:1.5}
+.cbcmac-panel .cbc-blocks{display:flex;flex-wrap:wrap;gap:.7rem;margin:.7rem 0}
+.cbcmac-panel .cbc-block{min-width:0;max-width:100%;padding:.7rem;border:1px solid var(--line-strong);border-radius:6px}
+.cbc-block strong,.cbc-block code,.cbc-block small{display:block}.cbc-block small{font:14px ui-monospace,monospace}
+.cbcmac-panel .cbc-own{border-top:1px solid var(--line-strong);margin-top:1rem;padding-top:.5rem}
+.cbcmac-panel .cbc-own code{display:block}
+.cbcmac-panel #cbc-chain td{font:12px ui-monospace,monospace;white-space:nowrap}
+.cbcmac-panel #cbc-chain th{white-space:normal;min-width:7rem}
+.cbcmac-panel #cbc-chain-area .table-wrap{max-width:100%;overflow-x:auto}
+.cbcmac-panel .cbc-verifier h3{font-size:1rem;line-height:1.4}
+.cbcmac-panel #cbc-public{min-height:0}
+@media(max-width:1000px){.cbcmac-panel .cbc-verifiers{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:640px){.cbcmac-panel .cbc-inputs,.cbcmac-panel .cbc-verifiers{grid-template-columns:1fr}.cbcmac-panel .cbc-verifier{padding:.8rem}}

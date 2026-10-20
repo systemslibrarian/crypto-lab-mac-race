@@ -12,6 +12,7 @@ import {
 } from './lengthext';
 import { recoverTagByTimingAttack, runTimingDemo } from './timing';
 import { checksumPanelHtml, wireChecksumPanel } from './crc/panel';
+import { cbcMacPanelHtml, wireCbcMacPanel } from './cbcmac/panel';
 
 function byId<T extends HTMLElement>(id: string): T {
   const element = document.getElementById(id);
@@ -291,10 +292,11 @@ const LESSON_STEPS: { panelId: string; title: string; body: string }[] = [
   { panelId: 'p0', title: '1. Checksum vs MAC', body: 'Watch CRC-32 catch accidental corruption, then accept a deliberate change once the attacker repairs its public checksum. Compare the same change with HMAC.' },
   { panelId: 'p1', title: '2. HMAC — the safe default', body: 'HMAC nests two hashes around the key so that knowing the tag tells you nothing about the internal hash state. This is what API request signing should use.' },
   { panelId: 'p5', title: '3. Why we need HMAC: length-extension', body: 'Bare SHA-256(secret || message) leaks enough internal state through its tag that an attacker can forge tags for extended messages without the secret. Forge a tag, then verify it on the broken server.' },
-  { panelId: 'p2', title: '4. CMAC — block-cipher MAC', body: 'When AES is already in your stack, CMAC gives you a NIST-approved MAC built from a block cipher. Notice K1/K2 are derived from AES_K(0).' },
-  { panelId: 'p3', title: '5. Poly1305 — fast, one-time only', body: 'A polynomial MAC. Reusing the one-time key destroys authenticity: the two tags become linear equations in r. The demo uses a deliberately narrowed r so the recovery runs live in your browser — the algebra is real, the search space is a teaching simplification (disclosed in the panel).' },
-  { panelId: 'p4', title: '6. GHASH — linear in GF(2^128)', body: "GHASH is one component of AES-GCM. This raw-field toy shows fixed-H linearity, but omits GCM framing and the nonce mask; its local verifier is not an AES-GCM endpoint." },
-  { panelId: 'p6', title: '7. Timing attack — non-constant-time compare', body: 'A naive byte-by-byte equality leaks prefix-match length. Watch a real byte-by-byte tag recovery driven entirely by that signal.' }
+  { panelId: 'p7', title: '4. Raw CBC-MAC — fixed length only', body: 'See a valid raw tag authenticate a forged longer message, then run agreed-length, length-prepended and CMAC checks.' },
+  { panelId: 'p2', title: '5. CMAC — block-cipher MAC', body: 'When AES is already in your stack, CMAC gives you a NIST-approved MAC built from a block cipher. Notice K1/K2 are derived from AES_K(0).' },
+  { panelId: 'p3', title: '6. Poly1305 — fast, one-time only', body: 'A polynomial MAC. Reusing the one-time key destroys authenticity: the two tags become linear equations in r. The demo uses a deliberately narrowed r so the recovery runs live in your browser — the algebra is real, the search space is a teaching simplification (disclosed in the panel).' },
+  { panelId: 'p4', title: '7. GHASH — linear in GF(2^128)', body: "GHASH is one component of AES-GCM. This raw-field toy shows fixed-H linearity, but omits GCM framing and the nonce mask; its local verifier is not an AES-GCM endpoint." },
+  { panelId: 'p6', title: '8. Timing attack — non-constant-time compare', body: 'A naive byte-by-byte equality leaks prefix-match length. Watch a real byte-by-byte tag recovery driven entirely by that signal.' }
 ];
 
 export function renderApp(container: HTMLElement): void {
@@ -414,9 +416,11 @@ export function renderApp(container: HTMLElement): void {
           <details class="source-toggle"><summary>Show implementation</summary><pre class="src" tabindex="0">${escapeHtml(HMAC_SRC)}</pre></details>
         </section>
 
+        ${cbcMacPanelHtml}
+
         <section class="panel" id="p2" aria-labelledby="p2-title">
           <div class="panel-head">
-            <span class="lesson-badge">Lesson 4</span>
+            <span class="lesson-badge">Lesson 5</span>
             <h2 id="p2-title">CMAC</h2>
             <span class="chip chip-ok">RECOMMENDED (FIPS contexts)</span>
           </div>
@@ -448,7 +452,7 @@ export function renderApp(container: HTMLElement): void {
 
         <section class="panel" id="p3" aria-labelledby="p3-title">
           <div class="panel-head">
-            <span class="lesson-badge">Lesson 5</span>
+            <span class="lesson-badge">Lesson 6</span>
             <h2 id="p3-title">Poly1305</h2>
             <span class="chip chip-ok">RECOMMENDED (always with ChaCha20)</span>
           </div>
@@ -490,7 +494,7 @@ export function renderApp(container: HTMLElement): void {
 
         <section class="panel" id="p4" aria-labelledby="p4-title">
           <div class="panel-head">
-            <span class="lesson-badge">Lesson 6</span>
+            <span class="lesson-badge">Lesson 7</span>
             <h2 id="p4-title">GHASH</h2>
             <span class="chip chip-warn">SECURE only with nonce discipline</span>
           </div>
@@ -631,7 +635,7 @@ export function renderApp(container: HTMLElement): void {
 
         <section class="panel panel-wide" id="p6" aria-labelledby="p6-title">
           <div class="panel-head">
-            <span class="lesson-badge">Lesson 7</span>
+            <span class="lesson-badge">Lesson 8</span>
             <h2 id="p6-title">MAC Comparison + Timing Attack</h2>
           </div>
           <div class="table-wrap" role="region" tabindex="0" aria-label="MAC comparison table">
@@ -714,6 +718,7 @@ export function renderApp(container: HTMLElement): void {
   `;
 
   wireChecksumPanel();
+  wireCbcMacPanel();
   wireHmacPanel();
   wireCmacPanel();
   wirePolyPanel();
