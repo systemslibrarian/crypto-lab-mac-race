@@ -1073,6 +1073,18 @@ button.secondary {
 
 /* Extension: exact Black-Rogaway 2002 PMAC and its AES dependency model. */
 .pmac-panel { gap: 0.9rem; }
+/* `#pmac-results` is a grid item of `.panel`. Once the trace table is
+   populated, its min-content width must not enlarge that grid track (and, in
+   turn, the entire document). The table remains scrollable inside its named,
+   keyboard-focusable region. */
+.pmac-panel,
+#pmac-results,
+#pmac-results > *,
+#pmac-results > .table-wrap {
+  min-width: 0;
+  max-width: 100%;
+}
+.pmac-panel .panel-head > * { min-width: 0; overflow-wrap: anywhere; }
 .pmac-panel h3,
 .pmac-panel h4 { margin: 0; }
 .pmac-controls,
