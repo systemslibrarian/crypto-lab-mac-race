@@ -653,10 +653,10 @@ test('checksum edits retire verdicts; identical input, invalid targets and lengt
 // Guided tour
 // ---------------------------------------------------------------------------
 
-test('guided tour highlights the eight panels in pedagogical order', async ({ page }) => {
+test('guided tour highlights the nine panels in pedagogical order', async ({ page }) => {
   await open(page);
 
-  const order = ['p0', 'p1', 'p5', 'p7', 'p2', 'p3', 'p4', 'p6'];
+  const order = ['p0', 'p1', 'p5', 'p7', 'p2', 'p8', 'p3', 'p4', 'p6'];
   await page.locator('#tour-start').click();
 
   for (let step = 0; step < order.length; step += 1) {
