@@ -1070,3 +1070,97 @@ button.secondary {
 .cbcmac-panel #cbc-public{min-height:0}
 @media(max-width:1000px){.cbcmac-panel .cbc-verifiers{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:640px){.cbcmac-panel .cbc-inputs,.cbcmac-panel .cbc-verifiers{grid-template-columns:1fr}.cbcmac-panel .cbc-verifier{padding:.8rem}}
+
+/* Extension: exact Black-Rogaway 2002 PMAC and its AES dependency model. */
+.pmac-panel { gap: 0.9rem; }
+/* `#pmac-results` is a grid item of `.panel`. Once the trace table is
+   populated, its min-content width must not enlarge that grid track (and, in
+   turn, the entire document). The table remains scrollable inside its named,
+   keyboard-focusable region. */
+.pmac-panel,
+#pmac-results,
+#pmac-results > *,
+#pmac-results > .table-wrap {
+  min-width: 0;
+  max-width: 100%;
+}
+.pmac-panel .panel-head > * { min-width: 0; overflow-wrap: anywhere; }
+.pmac-panel h3,
+.pmac-panel h4 { margin: 0; }
+.pmac-controls,
+.pmac-verdicts,
+.pmac-block-pair,
+.pmac-schedules {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+.pmac-controls { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.pmac-controls > div,
+.pmac-block-pair > div,
+.pmac-schedules > div { min-width: 0; }
+.pmac-controls label { display: block; margin-bottom: 0.3rem; }
+.pmac-controls select {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--line-strong);
+  border-radius: 0.65rem;
+  padding: 0.6rem;
+  background: color-mix(in srgb, var(--panel) 88%, black 12%);
+  color: var(--text);
+  font: inherit;
+}
+.pmac-controls select:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.pmac-card,
+.pmac-schedules > div {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  padding: 0.8rem;
+  background: color-mix(in srgb, var(--panel) 92%, black 8%);
+}
+.pmac-card { display: grid; align-content: start; gap: 0.55rem; }
+.pmac-card p { margin: 0; color: var(--muted); }
+.pmac-tags { min-height: 0; }
+.pmac-tags p,
+.pmac-final p { margin: 0.35rem 0; min-width: 0; }
+.pmac-tags strong,
+.pmac-final strong,
+.pmac-final span,
+.pmac-tags code,
+.pmac-final code { display: block; }
+.pmac-tags code,
+.pmac-final code { overflow-wrap: anywhere; word-break: break-all; }
+.pmac-blocks { display: grid; gap: 0.45rem; }
+.pmac-block {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 0.55rem;
+  padding: 0.55rem;
+  background: color-mix(in srgb, var(--panel) 88%, black 12%);
+}
+.pmac-block strong,
+.pmac-block code { display: block; }
+.pmac-block strong { font-size: 0.82rem; }
+.pmac-block code { font: 0.78rem "IBM Plex Mono", "Consolas", monospace; overflow-wrap: anywhere; word-break: break-all; }
+#pmac-trace td { font: 0.78rem "IBM Plex Mono", "Consolas", monospace; white-space: nowrap; }
+.pmac-final {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.35rem 1rem;
+}
+.pmac-schedules ol { margin: 0.55rem 0 0; padding-left: 1.4rem; }
+.pmac-schedules li { margin: 0.45rem 0; }
+.pmac-schedules li strong,
+.pmac-schedules li span { display: block; }
+.pmac-schedules li span { color: var(--muted); font-size: 0.86rem; }
+@media (max-width: 800px) {
+  .pmac-controls { grid-template-columns: 1fr; }
+}
+@media (max-width: 640px) {
+  .pmac-verdicts,
+  .pmac-block-pair,
+  .pmac-schedules,
+  .pmac-final { grid-template-columns: 1fr; }
+}

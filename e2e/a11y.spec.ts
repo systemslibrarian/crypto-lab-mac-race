@@ -1,5 +1,5 @@
 import { test } from '@playwright/test';
-import { boot, driveAllStates, driveCbcMac, expectBaselineNotStale, NARROW } from './gate';
+import { boot, driveAllStates, driveCbcMac, drivePmac, expectBaselineNotStale, NARROW } from './gate';
 
 /**
  * WCAG A/AA regression gate for the dark-only lab. It scans every exhibit's
@@ -27,4 +27,10 @@ test('CBC-MAC extension accessibility at 320px', async ({ page }) => {
   test.setTimeout(180000);
   await page.setViewportSize({ width: 320, height: 900 }); await boot(page);
   await driveCbcMac(page, '320px');
+});
+
+test('PMAC extension accessibility at 320px', async ({ page }) => {
+  test.setTimeout(180000);
+  await page.setViewportSize({ width: 320, height: 900 }); await boot(page);
+  await drivePmac(page, 'PMAC 320px');
 });

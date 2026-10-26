@@ -18,7 +18,7 @@ export const NARROW = { width: 380, height: 800 };
  *
  *  2. EVERY SCAN ASSERTS ITS CONTENT IS PRESENT FIRST, and there are scans well
  *     past first paint. axe over an empty container passes having checked
- *     nothing, and every one of this lab's eight exhibits computes into an output
+ *     nothing, and every one of this lab's nine exhibits computes into an output
  *     panel that is empty until its button is pressed.
  *
  *  3. `violations` IS NOT THE WHOLE ORACLE. See `scan`.
@@ -96,7 +96,7 @@ export async function boot(page: Page): Promise<void> {
   ).toBe(true);
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
 
-  await expect(page.locator('.page section.panel')).toHaveCount(8);
+  await expect(page.locator('.page section.panel')).toHaveCount(9);
   await expect(page.locator('#hmac-run')).toBeVisible();
 
   await settle(page);
@@ -378,7 +378,22 @@ export async function driveAllStates(page: Page, theme: string): Promise<void> {
   await expect(page.locator('#tour-body')).toBeVisible();
   await scan(page, `${theme} / tour`);
   await page.locator('#tour-end').click();
+  await drivePmac(page, theme);
   await driveCbcMac(page, theme);
+}
+
+export async function drivePmac(page: Page, theme: string): Promise<void> {
+  await page.locator('#pmac-run').click();
+  await expect(page.locator('#pmac-results')).toBeVisible();
+  await expect(page.locator('#pmac-candidate-verdict')).toHaveText('ACCEPTED');
+  await scan(page, `${theme} / PMAC honest trace`);
+
+  await page.locator('#pmac-length').selectOption('66');
+  await page.locator('#pmac-scenario').selectOption('wrong-final');
+  await page.locator('#pmac-run').click();
+  await expect(page.locator('#pmac-candidate-verdict')).toHaveText('REJECTED');
+  await page.locator('#p8 details summary').click();
+  await scan(page, `${theme} / PMAC partial-block wrong-rule control`);
 }
 
 export async function driveCbcMac(page: Page, theme: string): Promise<void> {
