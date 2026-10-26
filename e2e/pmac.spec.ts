@@ -262,8 +262,9 @@ test('variant, standardization and performance boundaries remain visible with pr
   await expect(panel).toContainText('does not itself prove the paper\'s PRF theorem');
   await expect(panel).toContainText('not Q2-secure');
   await expect(panel).toContainText('public test material');
-  const pmacComparison = page.locator('#p6 tbody tr', { hasText: 'PMAC (2002)' });
-  await expect(page.locator('#p6 thead')).toContainText('PQ (classical-query model)');
+  const comparison = page.getByRole('region', { name: 'MAC comparison table' });
+  const pmacComparison = comparison.locator('tbody tr', { hasText: 'PMAC (2002)' });
+  await expect(comparison.locator('thead')).toContainText('PQ (classical-query model)');
   await expect(page.locator('#mac-pq-boundary')).toContainText('does not cover the stronger Q2 model');
   await expect(pmacComparison).toContainText('Model-dependent; not Q2-secure');
   await expect(pmacComparison).toContainText('not NIST-standardized');
