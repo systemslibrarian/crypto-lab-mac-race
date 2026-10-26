@@ -158,6 +158,9 @@ test('PMAC baseline is independently reproducible from every displayed AES input
   await expect(schedule).toHaveAttribute('data-cmac-span', '4');
   await expect(page.locator('#pmac-waves li')).toHaveCount(2);
   await expect(page.locator('#cmac-waves li')).toHaveCount(4);
+  await expect(page.locator('#pmac-waves')).toContainText('AES scheduling wave 1');
+  await expect(schedule).toContainText('PMAC 2 waves, CMAC 4 waves');
+  await expect(schedule).not.toContainText('round');
 
   const originalTag = await value(page, 'base-tag');
   await page.locator('#pmac-lanes').selectOption('1');
@@ -257,8 +260,15 @@ test('variant, standardization and performance boundaries remain visible with pr
   await expect(panel).toContainText('2002 Black–Rogaway PMAC definition');
   await expect(panel).toContainText('not a measured multicore speedup');
   await expect(panel).toContainText('does not itself prove the paper\'s PRF theorem');
+  await expect(panel).toContainText('not Q2-secure');
   await expect(panel).toContainText('public test material');
-  await expect(page.locator('#p6')).toContainText('not NIST-standardized');
+  const pmacComparison = page.locator('#p6 tbody tr', { hasText: 'PMAC (2002)' });
+  await expect(page.locator('#p6 thead')).toContainText('PQ (classical-query model)');
+  await expect(page.locator('#mac-pq-boundary')).toContainText('does not cover the stronger Q2 model');
+  await expect(pmacComparison).toContainText('Model-dependent; not Q2-secure');
+  await expect(pmacComparison).toContainText('not NIST-standardized');
+  await expect(pmacComparison.locator('a[href="https://arxiv.org/abs/1602.05973"]')).toHaveCount(1);
+  await expect(pmacComparison.locator('a[href="https://csrc.nist.gov/projects/block-cipher-techniques/BCM"]')).toHaveCount(1);
   await expect(panel.locator('a[href="https://www.cs.ucdavis.edu/~rogaway/papers/pmac.pdf"]')).toHaveCount(1);
   await expect(panel.locator('a[href="https://www.cs.ucdavis.edu/~rogaway/ocb/pmac128.txt"]')).toHaveCount(1);
   await expect(panel.locator('a[href="https://www.cs.ucdavis.edu/~rogaway/ocb/pmac256.txt"]')).toHaveCount(1);

@@ -49,6 +49,7 @@ The demo lets you run nine interactive panels: Checksum vs MAC, HMAC, Raw CBC-MA
 - CMAC implementation mistakes (subkey/padding/final-block handling): incorrect K1/K2 derivation or final block processing can produce incompatible or insecure tags.
 - PMAC implementation mistakes can break interoperability or authenticity if the Gray-code offset recurrence, block position, 10* padding, or complete-final-block `L·x^-1` adjustment changes. This lab pins the 2002 construction rather than silently mixing in later PMAC refinements.
 - A PMAC dependency span is not a runtime speedup claim. The model counts AES scheduling waves under a selected lane limit and excludes XOR, offset preparation, API overhead, hardware scheduling, and cached per-key setup.
+- PMAC's post-quantum status depends on the oracle model. This lesson permits ordinary classical MAC queries. Kaplan, Leurent, Leverrier and Naya-Plasencia give a Simon-style forgery with quantum-superposition (Q2) oracle access, so the 2002 construction is not Q2-secure; this lab does not implement that stronger oracle. See [*Breaking Symmetric Cryptosystems Using Quantum Period Finding*](https://arxiv.org/abs/1602.05973).
 
 ## Real-World Usage
 
@@ -78,7 +79,7 @@ npx playwright install chromium firefox webkit
 npm run test:a11y  # browser gate (Playwright): on-screen claims + axe-core WCAG A/AA
 npm run test:mutations  # original eight CRC/HMAC faults, unchanged
 npm run test:mutations:cbcmac  # six raw-CBC-MAC / CMAC faults
-npm run test:mutations:pmac  # eight PMAC arithmetic / verifier / model / boundary faults
+npm run test:mutations:pmac  # ten PMAC arithmetic / verifier / model / boundary faults
 ```
 
 The suite covers CRC-32/ISO-HDLC check and residue vectors, fixed-seed checksum repairs and four-byte target forcing through the real receiver, RFC 4231 HMAC vectors, NIST SP 800-38B AES-CMAC, RFC 8439
@@ -145,7 +146,7 @@ Browser mutation runs verify served-JavaScript identity. The original CRC
 mutation runner is unchanged.
 
 The PMAC extension adds 21 unit tests (106 total), five browser claim tests and
-an eight-case zero-retry mutation gate. `pmac-mutation-evidence.json` records the
+a ten-case zero-retry mutation gate. `pmac-mutation-evidence.json` records the
 concrete patches, owning assertion failures, served-asset guard and exact clean
 restoration. CI runs the original CRC/HMAC, raw-CBC-MAC/CMAC and PMAC mutation
 gates before deployment.

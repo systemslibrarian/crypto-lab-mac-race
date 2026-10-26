@@ -55,6 +55,16 @@ const mulXReference = (value: bigint): bigint => ((value << 1n) & MASK128) ^ ((v
 const divXReference = (value: bigint): bigint => (value >> 1n) ^ ((value & 1n) ? ((1n << 127n) | 0x43n) : 0n);
 const xorBig = (...values: bigint[]): bigint => values.reduce((sum, value) => sum ^ value, 0n);
 const encryptReference = (key: Uint8Array, block: bigint): bigint => bytesToBigInt(ecb(key, { disablePadding: true }).encrypt(bigIntToBlock(block)));
+const trailingZeroBitsReference = (value: number): number => {
+  if (!Number.isSafeInteger(value) || value <= 0) throw new RangeError('positive safe integers only');
+  let remaining = BigInt(value);
+  let count = 0;
+  while ((remaining & 1n) === 0n) {
+    count += 1;
+    remaining >>= 1n;
+  }
+  return count;
+};
 
 function referencePmac(key: Uint8Array, message: Uint8Array): string {
   const count = Math.max(1, Math.ceil(message.length / 16));
@@ -64,7 +74,7 @@ function referencePmac(key: Uint8Array, message: Uint8Array): string {
   const outputs: bigint[] = [];
   for (let i = 1; i < count; i += 1) {
     let power = l;
-    for (let j = 0; j < trailingZeroBits(i); j += 1) power = mulXReference(power);
+    for (let j = 0; j < trailingZeroBitsReference(i); j += 1) power = mulXReference(power);
     offset ^= power;
     outputs.push(encryptReference(key, bytesToBigInt(blocks[i - 1]!) ^ offset));
   }
@@ -83,6 +93,10 @@ describe('independent PMAC arithmetic and controls', () => {
       const message = crypto.getRandomValues(new Uint8Array(length));
       expect((await pmac2002(key, message)).tagHex).toBe(referencePmac(key, message));
     }
+    // 65 complete blocks make the non-final recurrence reach i=64. That owns
+    // the first ntz boundary beyond the authors' 1,000-byte vectors (i<=62).
+    const boundary = ascending(65 * 16);
+    expect((await pmac2002(KEY256, boundary)).tagHex).toBe(referencePmac(KEY256, boundary));
   }, 20000);
 
   it('implements x and x^-1 as inverse field operations at carry boundaries', () => {
@@ -93,7 +107,7 @@ describe('independent PMAC arithmetic and controls', () => {
       expect(divideByX(multiplyByX(block))).toEqual(block);
       expect(multiplyByX(divideByX(block))).toEqual(block);
     }
-    expect([1, 2, 3, 4, 8, 12, 16].map(trailingZeroBits)).toEqual([0, 1, 0, 2, 3, 2, 4]);
+    expect([1, 2, 3, 4, 8, 12, 16, 32, 64, 65].map(trailingZeroBits)).toEqual([0, 1, 0, 2, 3, 2, 4, 5, 6, 0]);
     expect(() => trailingZeroBits(0)).toThrow('positive safe integers');
   });
 
@@ -134,6 +148,7 @@ describe('independent PMAC arithmetic and controls', () => {
     expect(complete.details.finalRule).toBe('complete: XOR L·x^-1');
     expect(partial.details.finalRule).toBe('partial: 10* padding, no L·x^-1');
     expect(partial.details.paddedFinalBlockHex).toBe('20218000000000000000000000000000');
+    expect((await pmacWrongFinalRuleForLesson(KEY128, ascending(32))).tagHex).not.toBe(complete.tagHex);
     expect((await pmacWrongFinalRuleForLesson(KEY128, ascending(34))).tagHex).not.toBe(partial.tagHex);
   });
 

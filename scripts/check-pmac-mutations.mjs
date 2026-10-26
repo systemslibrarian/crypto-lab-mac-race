@@ -20,6 +20,14 @@ const cases = [
     unit: true,
   },
   {
+    name: 'power-of-two offset exponent is wrong at block 64',
+    file: 'src/pmac/pmac.ts',
+    anchor: '  return count;\n}',
+    replacement: '  return index === 64 ? count - 1 : count;\n}',
+    test: 'cross-checks byte arithmetic against a BigInt/noble reference for varied lengths and keys',
+    unit: true,
+  },
+  {
     name: 'lane encryption omits its offset',
     file: 'src/pmac/pmac.ts',
     anchor: 'const input = xor(block, laneOffset);',
@@ -73,6 +81,13 @@ const cases = [
     replacement: '<strong>a measured multicore speedup</strong>',
     test: 'variant, standardization and performance boundaries',
   },
+  {
+    name: 'Q2 superposition-query attack boundary is reversed',
+    file: 'src/pmac/panel.ts',
+    anchor: '<strong>not Q2-secure</strong>',
+    replacement: '<strong>Q2-secure</strong>',
+    test: 'variant, standardization and performance boundaries',
+  },
 ];
 
 function run(command, args, extraEnv = {}) {
@@ -87,6 +102,10 @@ function run(command, args, extraEnv = {}) {
 
 function requirePass(result, label) {
   if (result.status !== 0) throw new Error(`${label}\n${result.output}`);
+}
+
+function describeError(error) {
+  return error instanceof Error ? (error.stack ?? error.message) : String(error);
 }
 
 function assets() {
@@ -127,6 +146,10 @@ for (const entry of cases) {
   let failure;
   let sourceDiff = '';
   let mutantHash = baseline;
+  let phaseError;
+  let restorationError;
+  let restoredGreen = false;
+  let restoredHash = baseline;
   try {
     writeFileSync(entry.file, source.replace(entry.anchor, entry.replacement));
     sourceDiff = run('git', ['diff', '--', entry.file]).output.trim();
@@ -137,9 +160,31 @@ for (const entry of cases) {
       if (mutantHash === baseline) throw new Error(`${entry.name}: browser mutation did not change built JavaScript`);
     }
     failure = owning(entry);
+  } catch (error) {
+    phaseError = error;
   } finally {
-    writeFileSync(entry.file, source);
+    try {
+      writeFileSync(entry.file, source);
+      if (readFileSync(entry.file, 'utf8') !== source) throw new Error(`${entry.name}: source was not restored byte for byte`);
+      if (!entry.unit) {
+        requirePass(run('npm', ['run', 'build']), `${entry.name}: restored build failed`);
+        restoredHash = buildHash();
+        if (restoredHash !== baseline) throw new Error(`${entry.name}: restored bundle differs from baseline`);
+      }
+      const restored = owning(entry);
+      requirePass(restored, `${entry.name}: restored owning test failed`);
+      if (!/1 passed/.test(restored.output)) throw new Error(`${entry.name}: restored test did not run exactly once`);
+      restoredGreen = true;
+    } catch (error) {
+      restorationError = error;
+    }
   }
+
+  if (restorationError) {
+    const earlier = phaseError ? `\nEarlier mutation-phase error:\n${describeError(phaseError)}` : '';
+    throw new Error(`${entry.name}: clean restoration failed\n${describeError(restorationError)}${earlier}`);
+  }
+  if (phaseError) throw phaseError;
 
   const assertionFailure = failure?.status !== 0
     && /AssertionError|Error: expect\(|expect\(received\)|TestError/.test(failure.output)
@@ -147,12 +192,6 @@ for (const entry of cases) {
     && !failure.output.includes('MUTATION_ASSET_MISMATCH')
     && !failure.output.includes('Process from config.webServer');
   if (!assertionFailure) throw new Error(`${entry.name}: mutant did not fail its named assertion\n${failure?.output ?? '(no output)'}`);
-
-  if (!entry.unit) requirePass(run('npm', ['run', 'build']), `${entry.name}: restored build failed`);
-  const restored = owning(entry);
-  requirePass(restored, `${entry.name}: restored owning test failed`);
-  if (!/1 passed/.test(restored.output)) throw new Error(`${entry.name}: restored test did not run exactly once`);
-  if (!entry.unit && buildHash() !== baseline) throw new Error(`${entry.name}: restored bundle differs from baseline`);
 
   evidence.push({
     name: entry.name,
@@ -165,7 +204,9 @@ for (const entry of cases) {
     assertionFailure: true,
     retries: 0,
     servedAssetGuard: !entry.unit,
-    restoredGreen: true,
+    restoredSourceByteForByte: true,
+    restoredGreen,
+    restoredHash,
   });
   console.log(`${entry.name}: caught by ${entry.test}; restored green`);
 }

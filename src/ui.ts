@@ -644,18 +644,19 @@ export function renderApp(container: HTMLElement): void {
           </div>
           <div class="table-wrap" role="region" tabindex="0" aria-label="MAC comparison table">
             <table>
-              <caption class="sr-only">MAC primitive comparison: construction, key size, tag size, PQ resistance, and use case</caption>
-              <thead><tr><th>Primitive</th><th>Construction</th><th>Key</th><th>Tag</th><th>PQ</th><th>Use case</th></tr></thead>
+              <caption class="sr-only">MAC primitive comparison: construction, key size, tag size, classical-query post-quantum note, and use case</caption>
+              <thead><tr><th>Primitive</th><th>Construction</th><th>Key</th><th>Tag</th><th>PQ (classical-query model)</th><th>Use case</th></tr></thead>
               <tbody>
                 <tr><td>HMAC-SHA-256</td><td>Hash (${gloss('Merkle-Damgard', 'the block-by-block construction behind SHA-1/SHA-2: each block updates a running internal state, and the final state IS the output digest — which is what makes bare prefix-hashes extendable. HMAC wraps this so the leaked state cannot be resumed.')} wrapped)</td><td>Any secret</td><td>256b</td><td>Yes</td><td>General API auth</td></tr>
                 <tr><td>HMAC-SHA-512</td><td>Hash</td><td>Any secret</td><td>512b</td><td>Yes</td><td>Long-term integrity tokens</td></tr>
                 <tr><td>AES-256-CMAC</td><td>Block cipher</td><td>256b AES</td><td>128b</td><td>Yes</td><td>FIPS/NIST contexts</td></tr>
-                <tr><td>PMAC (2002)</td><td>Offset block cipher</td><td>128/256b AES</td><td>up to 128b</td><td>Yes</td><td>Parallel-MAC teaching; not NIST-standardized</td></tr>
+                <tr><td>PMAC (2002)</td><td>Offset block cipher</td><td>128/256b AES</td><td>up to 128b</td><td>Model-dependent; <a href="https://arxiv.org/abs/1602.05973" target="_blank" rel="noopener noreferrer">not Q2-secure</a></td><td>Parallel-MAC teaching; <a href="https://csrc.nist.gov/projects/block-cipher-techniques/BCM" target="_blank" rel="noopener noreferrer">not NIST-standardized</a></td></tr>
                 <tr><td>Poly1305</td><td>Polynomial mod 2^130-5</td><td>256b one-time</td><td>128b</td><td>Yes</td><td>ChaCha20-Poly1305</td></tr>
                 <tr><td>GHASH</td><td>Polynomial mod x^128+x^7+x^2+x+1</td><td>128b subkey H</td><td>128b</td><td>Yes</td><td>AES-GCM internals</td></tr>
               </tbody>
             </table>
           </div>
+          <p class="note" id="mac-pq-boundary"><strong>Quantum-model boundary:</strong> “Yes” in this table is only the customary classification when the attacker makes ordinary classical oracle queries while using quantum computation; it is not a security-bit estimate. It does not cover the stronger Q2 model, where an attacker queries the MAC in superposition. The PMAC row flags its published Q2 attack explicitly; this demo implements no Q2 oracle.</p>
 
           <h3>Timing differential (naive vs constant-time compare)</h3>
           <div class="button-row">

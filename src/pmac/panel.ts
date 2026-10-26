@@ -54,6 +54,7 @@ export const pmacPanelHtml = `<section class="panel panel-wide pmac-panel" id="p
     <p>The work count is exact for the displayed algorithms: both use one AES call per message block, where an empty or partial final block counts as one. Each also derives material with one <code>AES<sub>K</sub>(0<sup>128</sup>)</code> call that may be cached once per key; setup is shown separately and excluded from per-message work/span. PMAC's modeled span is the number of AES scheduling waves with the selected lane limit, followed by its final AES. XOR reduction, offset preparation, API overhead and hardware scheduling are not timed.</p>
     <p>This is a dependency model, <strong>not a measured multicore speedup</strong>. <code>Promise.all</code> expresses that the non-final AES calls have no data dependency; it does not prove that a browser or CPU executes them simultaneously. CMAC and PMAC use separate keys, as independent schemes should. This panel discloses those randomly generated keys as <strong>public test material</strong> so the trace is independently reproducible; it is not an attacker model or a usable authenticity deployment.</p>
     <p>The correct verifier recomputes the exact construction and compares all tag bytes after a public length check. JavaScript does not guarantee constant-time machine code. This teaching implementation is not a production MAC library and does not itself prove the paper's PRF theorem.</p>
+    <p>The post-quantum label is model-specific. This lesson gives an attacker ordinary classical MAC queries. Kaplan, Leurent, Leverrier and Naya-Plasencia show a Simon-style forgery against PMAC when the attacker instead receives superposition access to the MAC oracle, so the construction is <strong>not Q2-secure</strong>. That stronger oracle is not implemented here.</p>
     <p>Primary sources: <a href="https://www.cs.ucdavis.edu/~rogaway/papers/pmac.pdf" target="_blank" rel="noopener noreferrer">Black and Rogaway, EUROCRYPT 2002, §§2–5</a>; author-hosted <a href="https://www.cs.ucdavis.edu/~rogaway/ocb/pmac128.txt" target="_blank" rel="noopener noreferrer">PMAC-AES-128</a> and <a href="https://www.cs.ucdavis.edu/~rogaway/ocb/pmac256.txt" target="_blank" rel="noopener noreferrer">PMAC-AES-256 vectors</a>. Rogaway's <a href="https://www.cs.ucdavis.edu/~rogaway/papers/offsets.pdf" target="_blank" rel="noopener noreferrer">2004 refinements</a> are later variants and are not silently substituted here.</p>
   </details>
 </section>`;
@@ -79,7 +80,7 @@ function blockMarkup(bytes: Uint8Array): string {
 }
 
 function waveMarkup(waves: AesWave[]): string {
-  return waves.map((wave) => `<li data-round="${wave.round}"><strong>AES round ${wave.round}</strong><span>${wave.tasks.map((task) => task.label).join(' + ')}</span></li>`).join('');
+  return waves.map((wave) => `<li data-wave="${wave.round}"><strong>AES scheduling wave ${wave.round}</strong><span>${wave.tasks.map((task) => task.label).join(' + ')}</span></li>`).join('');
 }
 
 function paintExpectedVerdict(element: HTMLElement, accepted: boolean, expectedAccepted: boolean): void {
@@ -184,7 +185,7 @@ export function wirePmacPanel(): void {
       (document.querySelector('[data-pmac="final-input"]') as HTMLElement).textContent = candidate.details.finalInputHex;
 
       const schedule = modelPmacVsCmac(baseMessage.length, Number(lanes.value));
-      node('pmac-schedule-summary').textContent = `Per-message AES work: PMAC ${schedule.pmac.aesWork}, CMAC ${schedule.cmac.aesWork}. Modeled AES span with ${schedule.lanes} lane${schedule.lanes === 1 ? '' : 's'}: PMAC ${schedule.pmac.aesSpan} round${schedule.pmac.aesSpan === 1 ? '' : 's'}, CMAC ${schedule.cmac.aesSpan}. Key setup: one AES_K(0^128) call for each scheme, cached outside this count.`;
+      node('pmac-schedule-summary').textContent = `Per-message AES work: PMAC ${schedule.pmac.aesWork}, CMAC ${schedule.cmac.aesWork}. Modeled AES span with ${schedule.lanes} lane${schedule.lanes === 1 ? '' : 's'}: PMAC ${schedule.pmac.aesSpan} wave${schedule.pmac.aesSpan === 1 ? '' : 's'}, CMAC ${schedule.cmac.aesSpan} wave${schedule.cmac.aesSpan === 1 ? '' : 's'}. Key setup: one AES_K(0^128) call for each scheme, cached outside this count.`;
       node('pmac-schedule-summary').dataset.pmacWork = String(schedule.pmac.aesWork);
       node('pmac-schedule-summary').dataset.cmacWork = String(schedule.cmac.aesWork);
       node('pmac-schedule-summary').dataset.pmacSpan = String(schedule.pmac.aesSpan);
