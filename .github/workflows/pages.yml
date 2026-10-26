@@ -43,6 +43,13 @@ jobs:
         run: npm run test:mutations:cbcmac
       - name: Mutation gate (PMAC arithmetic, verifier, model and boundary faults)
         run: npm run test:mutations:pmac
+      - name: Preserve PMAC mutation evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: pmac-mutation-evidence-${{ github.sha }}
+          path: pmac-mutation-evidence.json
+          if-no-files-found: error
+          retention-days: 30
 
       - uses: actions/upload-pages-artifact@v5
         with:
