@@ -13,7 +13,10 @@ const cases = [
     file: 'src/pmac/pmac.ts',
     anchor: 'offset = xor(offset, lPower(l, trailingZeroBits(index)));',
     replacement: 'offset = lPower(l, trailingZeroBits(index));',
-    test: 'PMAC-AES-128 32 bytes',
+    // Two non-final blocks are required: at i=1 recurrence and a fresh power
+    // are identical. The official 34-byte vector reaches i=2 and separates
+    // Offset(2) = L xor (L*x) from the mutant's fresh L*x.
+    test: 'PMAC-AES-128 34 bytes',
     unit: true,
   },
   {
