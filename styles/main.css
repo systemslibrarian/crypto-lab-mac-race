@@ -1164,3 +1164,7 @@ button.secondary {
   .pmac-schedules,
   .pmac-final { grid-template-columns: 1fr; }
 }
+
+/* The tour arrows, drawn here rather than written as DOM text. */
+#tour-prev::before { content: "\2190\00A0"; }
+#tour-next::after  { content: "\00A0\2192"; }

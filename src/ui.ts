@@ -367,9 +367,9 @@ export function renderApp(container: HTMLElement): void {
             <p class="tour-body" id="tour-body">Click "Start tour" to walk through the panels in pedagogical order. Each step highlights one panel and explains what the lesson is.</p>
           </div>
           <div class="tour-controls">
-            <button id="tour-start" aria-label="Start guided tour">Start tour</button>
-            <button id="tour-prev" aria-label="Previous lesson" hidden>← Prev</button>
-            <button id="tour-next" aria-label="Next lesson" hidden>Next →</button>
+            <button id="tour-start" aria-label="Start tour: the guided tour">Start tour</button>
+            <button id="tour-prev" aria-label="Prev: the previous lesson" hidden>Prev</button>
+            <button id="tour-next" aria-label="Next: the next lesson" hidden>Next</button>
             <button id="tour-end" aria-label="End tour" hidden>End</button>
           </div>
         </div>
@@ -408,7 +408,7 @@ export function renderApp(container: HTMLElement): void {
             <label for="hmac-verify-tag">Candidate tag (hex)</label>
             <input id="hmac-verify-tag" aria-label="HMAC candidate tag" />
             <div class="button-row">
-              <button id="hmac-verify" aria-label="Verify HMAC tag">Verify on server</button>
+              <button id="hmac-verify" aria-label="Verify on server: the HMAC tag">Verify on server</button>
               <span id="hmac-verdict" class="verdict verdict-idle">awaiting input</span>
             </div>
           </div>
@@ -442,7 +442,7 @@ export function renderApp(container: HTMLElement): void {
             <label for="cmac-verify-tag">Candidate tag (hex)</label>
             <input id="cmac-verify-tag" aria-label="CMAC candidate tag" />
             <div class="button-row">
-              <button id="cmac-verify" aria-label="Verify CMAC tag">Verify on server</button>
+              <button id="cmac-verify" aria-label="Verify on server: the CMAC tag">Verify on server</button>
               <span id="cmac-verdict" class="verdict verdict-idle">awaiting input</span>
             </div>
           </div>
@@ -464,7 +464,7 @@ export function renderApp(container: HTMLElement): void {
           <label for="poly-message">Message</label>
           <textarea id="poly-message" aria-label="Poly1305 message input">Cryptographic Forum Research Group</textarea>
           <div class="button-row">
-            <button id="poly-run" aria-label="Compute Poly1305 tag">Compute tag</button>
+            <button id="poly-run" aria-label="Compute tag: the Poly1305 tag">Compute tag</button>
           </div>
           <pre id="poly-output" class="hex" role="status" aria-live="polite" aria-label="Poly1305 output"></pre>
 
@@ -473,7 +473,7 @@ export function renderApp(container: HTMLElement): void {
             <p class="note">A buggy server reused the <em>same</em> one-time key for two invoice messages. The two tags are linear equations in the ${gloss('clamped r', "half of the Poly1305 one-time key, with 22 specific bits forced to 0 ('clamped') so the field arithmetic stays fast and side-channel-safe; the other half is the additive value s.")} value <code>r</code>: <code>tag = (m·r mod 2¹³⁰⁻⁵ + s) mod 2¹²⁸</code>. Recover <code>r</code> and forge a new invoice.</p>
             <p class="note" id="poly-reuse-scope"><strong>Teaching scope:</strong> real Poly1305 <code>r</code> has about 106 free clamped bits. This demo chooses 16 bits for a simple classroom brute-force search; that is not a security bound. For known single-block messages, the large pre-reduction quotient disappears modulo 2¹³⁰⁻⁵, leaving a small number of tag-truncation carry candidates. An additional observation may be needed to distinguish candidates: two tags do not always identify one key, and arbitrary multi-block cases involve different polynomial equations. The displayed forgery is checked against the real authenticator with this deliberately narrowed key. Reusing a full-size one-time key is also unsafe. See <a href="https://www.rfc-editor.org/rfc/rfc8439.html#section-2.5" target="_blank" rel="noopener noreferrer">RFC 8439 §2.5</a>.</p>
             <div class="button-row">
-              <button id="poly-attack" aria-label="Run Poly1305 key reuse attack">Run reuse attack →</button>
+              <button id="poly-attack" aria-label="Run reuse attack: the Poly1305 key reuse attack">Run reuse attack →</button>
             </div>
             <pre id="poly-attack-output" class="hex" role="status" aria-live="polite" aria-label="Poly1305 attack output"></pre>
           </div>
@@ -521,7 +521,7 @@ export function renderApp(container: HTMLElement): void {
             </div>
 
             <div class="button-row">
-              <button id="ghash-attack" aria-label="Run raw GHASH field-product toy">Run raw-field toy →</button>
+              <button id="ghash-attack" aria-label="Run raw-field toy: the raw GHASH field-product toy">Run raw-field toy →</button>
             </div>
             <pre id="ghash-attack-output" class="hex" role="status" aria-live="polite" tabindex="0" aria-label="GHASH attack output"></pre>
           </div>
@@ -530,7 +530,7 @@ export function renderApp(container: HTMLElement): void {
             <h3>Toy verifier</h3>
             <p class="note">The toy verifier holds the original H and compares raw single-block products. Acceptance applies only to this deliberately insecure model. A real GCM verifier checks the framed, nonce-masked authentication tag; accepting a toy product does not establish GCM acceptance.</p>
             <div class="button-row">
-              <button id="ghash-verify" aria-label="Submit forged GHASH tag">Submit forged tag</button>
+              <button id="ghash-verify" aria-label="Submit forged tag: the forged GHASH tag">Submit forged tag</button>
               <span id="ghash-verdict" class="verdict verdict-idle">awaiting attack</span>
             </div>
           </div>
@@ -558,7 +558,7 @@ export function renderApp(container: HTMLElement): void {
             <input id="le-message" aria-label="Original message for length extension" value="comment=10&uid=7" />
             <div class="button-row">
               <button id="le-capture" aria-label="Capture original request">Capture original</button>
-              <button id="le-reset-secret" class="secondary" aria-label="Rotate the secret">Rotate secret</button>
+              <button id="le-reset-secret" class="secondary" aria-label="Rotate secret: rotate it">Rotate secret</button>
             </div>
             <div class="side-by-side">
               <div class="side broken">
@@ -580,7 +580,7 @@ export function renderApp(container: HTMLElement): void {
             <label for="le-guess">Guessed secret length: <span id="le-guess-value">16</span></label>
             <input id="le-guess" type="range" min="${ATTACKER_SECRET_LENGTH_RANGE[0]}" max="${ATTACKER_SECRET_LENGTH_RANGE[1]}" step="1" value="16" aria-label="Guessed secret length slider" />
             <div class="button-row">
-              <button id="le-forge" aria-label="Forge a length-extended tag">Forge tag</button>
+              <button id="le-forge" aria-label="Forge tag: a length-extended tag">Forge tag</button>
             </div>
 
             <div id="le-layout" class="le-layout" role="group" aria-label="Forged message layout" hidden>
@@ -615,14 +615,14 @@ export function renderApp(container: HTMLElement): void {
               <div class="side broken">
                 <div class="side-label"><span class="badge-bad">BROKEN server</span></div>
                 <div class="button-row">
-                  <button id="le-verify-raw" aria-label="Verify forged tag on bare SHA-256 server">Submit to bare-SHA-256 server</button>
+                  <button id="le-verify-raw" aria-label="Submit to bare-SHA-256 server: verify the forged tag there">Submit to bare-SHA-256 server</button>
                   <span id="le-verdict-raw" class="verdict verdict-idle">awaiting forge</span>
                 </div>
               </div>
               <div class="side safe">
                 <div class="side-label"><span class="badge-ok">SAFE server</span></div>
                 <div class="button-row">
-                  <button id="le-verify-hmac" aria-label="Verify forged tag on HMAC server">Submit to HMAC server</button>
+                  <button id="le-verify-hmac" aria-label="Submit to HMAC server: verify the forged tag there">Submit to HMAC server</button>
                   <span id="le-verdict-hmac" class="verdict verdict-idle">awaiting forge</span>
                 </div>
               </div>
@@ -678,7 +678,7 @@ export function renderApp(container: HTMLElement): void {
             <div class="button-row">
               <label for="recovery-bytes">Bytes to recover:</label>
               <input id="recovery-bytes" type="number" min="1" max="16" value="8" aria-label="Number of bytes to recover" style="width: 5rem; min-height: 2rem;" />
-              <button id="recovery-run" aria-label="Run byte-by-byte recovery attack">Start recovery →</button>
+              <button id="recovery-run" aria-label="Start recovery: run the byte-by-byte recovery attack">Start recovery →</button>
             </div>
             <div id="recovery-progress" class="recovery-progress" aria-live="polite">
               <div class="recovery-bar"><div id="recovery-bar-fill" class="recovery-bar-fill"></div></div>
