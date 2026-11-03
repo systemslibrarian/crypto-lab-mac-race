@@ -1,4 +1,5 @@
 import { checkBlocks, hex, lengthBlock, LENGTH_MISMATCH, NOT_BLOCK_ALIGNED, TAG_MISMATCH, type ChainStep, type Verification } from './cbcmac';
+import { agreedLengthNote } from './note';
 import { spliceOne, spliceTwo } from './forge';
 import { makeLessonOracles, type Variant } from './oracle';
 
@@ -79,7 +80,7 @@ export function wireCbcMacPanel(): void {
     for (const v of variants) {
       const result = checks[v], reason = result.code === LENGTH_MISMATCH ? 'wrong length' : result.code === TAG_MISMATCH ? 'tag mismatch' : result.code === NOT_BLOCK_ALIGNED ? 'block alignment' : result.code;
       chip(v, result.accepted ? 'alarm' : 'accept', result.accepted ? '✕ ACCEPTED — FORGED' : `✓ rejected — ${reason}`);
-      let html = `<p>Same forged bytes (${forged.length} bytes), same submitted raw tag. ${v === 'fixed' ? `Agreed length: ${agreed.value} bytes.` : ''}</p>`;
+      let html = `<p>Same forged bytes (${forged.length} bytes), same submitted raw tag. ${agreedLengthNote(v, agreed.value)}</p>`;
       if (result.expected) html += `<p>Receiver recomputed: <code data-cbc="expected">${hex(result.expected)}</code></p>`;
       if (v === 'raw') html += `<p data-cbc="raw-checks">Block alignment: ${forged.length % 16 === 0 ? 'PASS' : 'FAIL'}; tag equality: ${result.accepted ? 'PASS' : 'FAIL'}.</p>${result.accepted ? '<strong data-cbc="negative-heading">TAG VALID — AND FORGED</strong>' : ''}`;
       if (v === 'fixed' && result.accepted) html += '<p>The receiver accepted two lengths across the protocol: the sender tagged another length. Agreement must constrain both ends.</p>';

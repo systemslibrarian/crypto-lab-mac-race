@@ -1,4 +1,5 @@
 import { crc32, crcHex } from './crc32';
+import { uniformBelow } from '../uniform';
 import { crcReceiverAccepts } from './receiver';
 import { forceCrc, repairCrc } from './forge';
 import { createHmacReceiver } from './hmac-receiver';
@@ -205,7 +206,7 @@ export function wireChecksumPanel(): void {
     if (a.length === 0) { setChip('crc-verdict1', 'idle', 'Add message bytes before flipping bits.'); return; }
     const b = a.slice();
     const total = a.length * 8;
-    const random = (limit: number) => crypto.getRandomValues(new Uint32Array(1))[0]! % limit;
+    const random = (limit: number) => uniformBelow(limit);
     if (burst.checked) {
       const length = 1 + random(Math.min(32, total));
       const start = random(total - length + 1);
