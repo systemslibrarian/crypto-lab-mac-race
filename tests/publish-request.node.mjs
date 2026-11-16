@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { chmodSync, existsSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { delimiter, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -8,33 +8,10 @@ import { fileURLToPath, URL } from 'node:url';
 import process from 'node:process';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
-
-// npm publishes its own CLI path as npm_execpath to every script it runs, so
-// under `npm run build` the control exercises exactly the npm that invoked it.
-// A bare `node --test` has no such variable; Node's bundled npm then lives
-// beside the binary in the official layout, but not under every package
-// manager (Homebrew keeps npm beside the Cellar, not beside the binary), so the
-// last resort is the `npm` on PATH resolved to its real CLI script. Whatever
-// is chosen is still run by process.execPath, so the control never changes Node.
-const derivedNpmCli = join(process.execPath, '..', '..', 'lib', 'node_modules', 'npm', 'bin', 'npm-cli.js');
-
-function npmCliFromPath() {
-  for (const dir of (process.env.PATH ?? '').split(delimiter)) {
-    if (!dir) continue;
-    const candidate = join(dir, 'npm');
-    if (!existsSync(candidate)) continue;
-    const real = realpathSync(candidate);
-    if (real.endsWith('.js')) return real;
-  }
-  return undefined;
-}
-
-const npmCli =
-  process.env.npm_execpath && existsSync(process.env.npm_execpath)
-    ? process.env.npm_execpath
-    : existsSync(derivedNpmCli)
-      ? derivedNpmCli
-      : (npmCliFromPath() ?? derivedNpmCli);
+// npm hands its own CLI path to every script it runs, so under npm this control
+// exercises exactly the npm that invoked it. A bare `node --test` sets no such
+// variable, so the control falls back to the `npm` on PATH.
+const npmCli = process.env.npm_execpath;
 
 // Replace only the external GitHub boundary; exercise the real npm script.
 // Neither control dispatches a workflow or uploads any local build.
@@ -44,11 +21,9 @@ function request(exitCode) {
   writeFileSync(gh, '#!/usr/bin/env node\nconsole.log(JSON.stringify(process.argv.slice(2)));\nprocess.exit(Number(process.env.PUBLISH_CONTROL_EXIT));\n');
   chmodSync(gh, 0o700);
   try {
-    assert.ok(
-      existsSync(npmCli),
-      `npm CLI not found at ${npmCli}; run this control through npm (npm run test:publish-request) so npm_execpath names the npm to exercise`,
-    );
-    return spawnSync(process.execPath, [npmCli, 'run', 'deploy', '--silent'], {
+    const command = npmCli ? process.execPath : 'npm';
+    const args = npmCli ? [npmCli, 'run', 'deploy', '--silent'] : ['run', 'deploy', '--silent'];
+    return spawnSync(command, args, {
       cwd: root,
       env: { ...process.env, PATH: dir + delimiter + process.env.PATH, GH_TOKEN: '', PUBLISH_CONTROL_EXIT: String(exitCode) },
       encoding: 'utf8',
