@@ -826,3 +826,26 @@ test('CBC-MAC late AES completions cannot restore retired verdicts', async ({ pa
   await expect(page.locator('#cbc-forge')).toBeDisabled();
   await cbcForge(page); await expect(page.locator('#cbc-negative')).toBeVisible();
 });
+
+// Attribution gate: the two sourced callouts must say what their sources say.
+// RFC 8439 carries the unpredictability requirement in §2.5 and §4, in those
+// words; Lucky 13 recovered PLAINTEXT, in full only against OpenSSL.
+test('the RFC 8439 and Lucky 13 callouts quote their sources', async ({ page }) => {
+  await open(page);
+
+  const poly = await flat(page, '#p3');
+  expect(poly).toContain(
+    '§2.5 — "The pair (r,s) should be unique, and MUST be unpredictable for each invocation"',
+  );
+  expect(poly).toContain('§4 — "The Poly1305 key MUST be unpredictable to an attacker."');
+  // Not in RFC 8439, and the WireGuard/QUIC incidents were never sourced.
+  expect(poly).not.toContain('The key MUST be unpredictable for each invocation.');
+  expect(poly).not.toMatch(/Wireguard|WireGuard/);
+
+  const timing = await flat(page, '#p6');
+  expect(timing).toContain('plaintext recovery against CBC-mode TLS');
+  expect(timing).toContain('full plaintext recovery was demonstrated against OpenSSL');
+  expect(timing).toContain('up to 4 bits of the last byte in any block');
+  expect(timing).toContain('NSS was judged potentially vulnerable from its source rather than attacked');
+  expect(timing).not.toContain('key-byte recovery');
+});

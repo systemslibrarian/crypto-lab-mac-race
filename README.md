@@ -59,6 +59,21 @@ The demo lets you run nine interactive panels: Checksum vs MAC, HMAC, Raw CBC-MA
 - AES-GCM in TLS/IPsec: GHASH is the authentication polynomial component inside GCM tag generation and verification.
 - 3GPP LTE EIA2 integrity algorithm: AES-CMAC is used to authenticate signaling messages in mobile network protocols.
 
+**Sources reviewed 15 November 2026:** the Poly1305 panel attributed the sentence
+"The key MUST be unpredictable for each invocation." to RFC 8439; that sentence is
+not in the RFC. The requirement is stated in
+[§2.5](https://www.rfc-editor.org/rfc/rfc8439.html#section-2.5) ("The pair (r,s)
+should be unique, and MUST be unpredictable for each invocation") and in
+[§4](https://www.rfc-editor.org/rfc/rfc8439.html#section-4) ("The Poly1305 key MUST
+be unpredictable to an attacker"), and the panel now quotes both. The
+WireGuard/QUIC key-reuse incidents that followed the quotation named no source and
+could not be substantiated, so they are removed. The Lucky 13 callout described
+"key-byte recovery"; the attack recovers **plaintext**. Per the
+[authors' own page](https://www.isg.rhul.ac.uk/tls/Lucky13.html), full plaintext
+recovery was demonstrated against OpenSSL, partial recovery (up to 4 bits of the
+last byte in any block) against GnuTLS, and NSS was examined as source code and
+judged potentially vulnerable rather than attacked.
+
 ## How to Run Locally
 
 ```bash

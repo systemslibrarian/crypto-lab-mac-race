@@ -487,8 +487,8 @@ export function renderApp(container: HTMLElement): void {
             </div>
           </div>
 
-          <div class="callout-cve" role="group" aria-label="Incident callout">
-            <strong>📜 RFC 8439 warns explicitly:</strong> "The key MUST be unpredictable for each invocation." Implementations that reused Poly1305 keys (early Wireguard / experimental QUIC ports, 2015–2018 era code) had to be patched specifically for this property.
+          <div class="callout-cve" role="group" aria-label="Standard requirement callout">
+            <strong>📜 RFC 8439 requires it, twice:</strong> §2.5 — "The pair (r,s) should be unique, and MUST be unpredictable for each invocation" — and §4 — "The Poly1305 key MUST be unpredictable to an attacker."
           </div>
 
           <p class="note">RFC 8439: Poly1305 must use a unique one-time key per message, usually derived by ChaCha20 with a unique nonce.</p>
@@ -688,7 +688,7 @@ export function renderApp(container: HTMLElement): void {
           </div>
 
           <div class="callout-cve">
-            <strong>🔓 Lucky 13 (AlFardan & Paterson — 2013):</strong> TLS 1.0–1.2 record MAC verification had measurable timing variation tied to padding length. Practical key-byte recovery against CBC-mode TLS, demonstrated against OpenSSL, NSS, and GnuTLS.<br/>
+            <strong>🔓 Lucky 13 (AlFardan & Paterson — 2013):</strong> TLS 1.0–1.2 record MAC verification had measurable timing variation tied to padding length. Practical <em>plaintext</em> recovery against CBC-mode TLS — not key recovery: full plaintext recovery was demonstrated against OpenSSL, partial recovery (up to 4 bits of the last byte in any block) against GnuTLS, and NSS was judged potentially vulnerable from its source rather than attacked.<br/>
             <strong>🔓 Keyczar (Google) 2009, Java's <code>MessageDigest.isEqual</code> pre-Java 6u17:</strong> shipped non-constant-time MAC comparison; both fixed after public disclosure.
           </div>
 
