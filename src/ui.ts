@@ -398,7 +398,7 @@ export function renderApp(container: HTMLElement): void {
 
           <div class="bitdiff-section">
             <p class="note"><strong>Avalanche:</strong> flip one bit of the message or one bit of the key — watch ~50% of output bits change.</p>
-            <p class="note note-why"><strong>Why ~50% matters for a MAC:</strong> if flipping one message bit only changed a few tag bits, an attacker could nudge a message toward a target tag and steer forgeries. A ~50% flip means the tag is <em>unpredictable</em> — no local edit gives the attacker any handle on the output, which is exactly the security property a MAC needs.</p>
+            <p class="note note-why"><strong>What changed?</strong> The grids count differences between two computed tags. Even an unkeyed hash can change about half its output bits. Message authentication also requires a secret key and a secure MAC construction.</p>
             <div id="hmac-bitdiff-msg" class="bitdiff-block"></div>
             <div id="hmac-bitdiff-key" class="bitdiff-block"></div>
           </div>
@@ -758,12 +758,39 @@ function escapeHtml(s: string): string {
 function wireHmacPanel(): void {
   let stepper: ReturnType<typeof makeStepper> | null = null;
 
-  const prepare = async (revealAll: boolean): Promise<void> => {
-    const message = byId<HTMLTextAreaElement>('hmac-message').value;
-    const key = byId<HTMLInputElement>('hmac-key').value;
+  const messageField = byId<HTMLTextAreaElement>('hmac-message');
+  const keyField = byId<HTMLInputElement>('hmac-key');
+  const candidate = byId<HTMLInputElement>('hmac-verify-tag');
+  const verdict = byId<HTMLElement>('hmac-verdict');
+  let computation = 0;
+  let verification = 0;
+
+  function clearVerdict(): void {
+    verification += 1;
+    setVerdictIdle(verdict, 'inputs changed — click Verify');
+  }
+
+  for (const field of [messageField, keyField]) {
+    field.addEventListener('input', () => {
+      computation += 1;
+      stepper = null;
+      for (const id of ['hmac-output', 'hmac-bitdiff-msg', 'hmac-bitdiff-key']) {
+        byId<HTMLElement>(id).replaceChildren();
+      }
+      clearVerdict();
+    });
+  }
+  candidate.addEventListener('input', clearVerdict);
+
+  const prepare = async (revealAll: boolean): Promise<boolean> => {
+    const revision = ++computation;
+    const candidateRevision = verification;
+    const message = messageField.value;
+    const key = keyField.value;
     const h256 = await computeHmac(message, key, 'SHA-256');
     const h512 = await computeHmac(message, key, 'SHA-512');
     const avalanche = await avalancheBitFlip(message, key);
+    if (revision !== computation) return false;
 
     const lines = [
       `Step 1 — normalized key (padded to block size):  ${fmtHex(h256.visual.normalizedKeyHex)}`,
@@ -777,17 +804,25 @@ function wireHmacPanel(): void {
     stepper = makeStepper(byId<HTMLElement>('hmac-output'), lines);
     if (revealAll) stepper.revealAll();
 
-    renderBitDiffGrid(byId<HTMLElement>('hmac-bitdiff-msg'), avalanche.original, avalanche.flippedMessage, 'Flip 1 bit of the message');
+    const messageGrid = byId<HTMLElement>('hmac-bitdiff-msg');
+    if (avalanche.flippedMessage === null) {
+      messageGrid.textContent = 'The message is empty: there is no message bit to flip.';
+    } else {
+      renderBitDiffGrid(messageGrid, avalanche.original, avalanche.flippedMessage, 'Flip 1 bit of the message');
+    }
     renderBitDiffGrid(byId<HTMLElement>('hmac-bitdiff-key'), avalanche.original, avalanche.flippedKey, 'Flip 1 bit of the key');
 
-    byId<HTMLInputElement>('hmac-verify-tag').value = h256.macHex;
-    setVerdictIdle(byId<HTMLElement>('hmac-verdict'), 'tag ready — click Verify');
+    if (candidateRevision === verification) {
+      candidate.value = h256.macHex;
+      verification += 1;
+      setVerdictIdle(verdict, 'tag ready — click Verify');
+    }
+    return true;
   };
 
   byId<HTMLButtonElement>('hmac-run').addEventListener('click', async () => {
     try {
-      await prepare(true);
-      setStatus('HMAC computed successfully.');
+      if (await prepare(true)) setStatus('HMAC computed successfully.');
     } catch (error) {
       setStatus(`HMAC error: ${(error as Error).message}`, true);
     }
@@ -795,7 +830,7 @@ function wireHmacPanel(): void {
 
   byId<HTMLButtonElement>('hmac-step').addEventListener('click', async () => {
     try {
-      if (!stepper) await prepare(false);
+      if (!stepper && !(await prepare(false))) return;
       const more = stepper!.step();
       setStatus(more ? 'Step advanced.' : 'All HMAC stages revealed.');
     } catch (error) {
@@ -805,7 +840,7 @@ function wireHmacPanel(): void {
 
   byId<HTMLButtonElement>('hmac-reveal').addEventListener('click', async () => {
     try {
-      if (!stepper) await prepare(false);
+      if (!stepper && !(await prepare(false))) return;
       stepper!.revealAll();
     } catch (error) {
       setStatus(`HMAC error: ${(error as Error).message}`, true);
@@ -813,16 +848,9 @@ function wireHmacPanel(): void {
   });
 
   byId<HTMLButtonElement>('hmac-verify').addEventListener('click', async () => {
-    const verdict = byId<HTMLElement>('hmac-verdict');
-    try {
-      const message = byId<HTMLTextAreaElement>('hmac-message').value;
-      const key = byId<HTMLInputElement>('hmac-key').value;
-      const tag = byId<HTMLInputElement>('hmac-verify-tag').value.trim();
-      const ok = await verifyHmac(message, key, 'SHA-256', tag);
-      setVerdict(verdict, ok);
-    } catch {
-      setVerdict(verdict, false);
-    }
+    const revision = ++verification;
+    const ok = await verifyHmac(messageField.value, keyField.value, 'SHA-256', candidate.value.trim());
+    if (revision === verification) setVerdict(verdict, ok);
   });
 }
 

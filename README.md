@@ -13,7 +13,7 @@ A newcomer starts at a "What is a MAC?" intro card — a one-sentence framing pl
 The intro card defines a MAC and shows a message and key flowing into a tag. The guided tour covers nine lessons:
 
 1. **Checksum vs MAC** — CRC-32 catches flipped bits and a naive tamper, then accepts a repaired checksum or four-byte forced target. HMAC-SHA-256 rejects the same changed message until the optional key-leak toggle is enabled.
-2. **HMAC** (the safe default) — step-through of the ipad/opad nested construction, an avalanche bit-diff grid with a "why ~50% flip matters" security note, and a server verifier.
+2. **HMAC** (the safe default) — step through the ipad/opad construction and compare tags after changing one message or key bit. An empty message can be authenticated and has only the key-bit comparison. The grid measures diffusion. Use the verifier to check a candidate tag against the current inputs.
 3. **Length-extension attack** — capture a `SHA-256(secret ∥ msg)` tag, forge an extended tag without the secret, and see a labelled diagram of the forged message layout; a side-by-side HMAC server rejects the same attack.
 4. **Raw CBC-MAC — fixed length only** — get one or two real tags, construct a longer message without the key, then compare the vulnerable receiver with agreed-length, length-prepended and CMAC checks. The trace shows the exact chain cancellation that motivates CMAC.
 5. **CMAC** — NIST SP 800-38B subkey (K1/K2) derivation and final-block handling, step-by-step.

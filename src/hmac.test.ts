@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { computeHmac, runHmacSelfTest, verifyHmac } from './hmac';
+import { avalancheBitFlip, computeHmac, runHmacSelfTest, verifyHmac } from './hmac';
 
 // RFC 4231 test case 1: key = 0x0b×20, data = "Hi There".
 const RFC4231_KEY_HEX = '0b'.repeat(20);
@@ -51,5 +51,14 @@ describe('HMAC verification / forgery rejection', () => {
 
   it('rejects a tag for a different key', async () => {
     expect(await verifyHmac(RFC4231_MSG, 'cc'.repeat(20), 'SHA-256', RFC4231_256)).toBe(false);
+  });
+});
+
+describe('HMAC avalanche inputs', () => {
+  it('keeps an empty message for both tags and omits the impossible message flip', async () => {
+    const result = await avalancheBitFlip('', 'key');
+    expect(result.original).toBe('5d5d139563c95b5967b9bd9a8c9b233a9dedb45072794cd232dc1b74832607d0');
+    expect(result.flippedKey).toBe('16ae82e9e564a3d98088df8e04e60324b5d55a9d936fec64f082e9209723559e');
+    expect(result.flippedMessage).toBeNull();
   });
 });

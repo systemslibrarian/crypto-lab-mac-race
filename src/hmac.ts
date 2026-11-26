@@ -126,19 +126,19 @@ export async function verifyHmac(
 
 export async function avalancheBitFlip(message: string, key: string): Promise<{
   original: string;
-  flippedMessage: string;
+  flippedMessage: string | null;
   flippedKey: string;
 }> {
-  const messageBytes = encoder.encode(message || 'A');
-  const keyBytes = parseKey(key || 'default-key');
+  const messageBytes = encoder.encode(message);
+  const keyBytes = parseKey(key);
 
   const messageFlip = new Uint8Array(messageBytes);
-  messageFlip[0] ^= 0x01;
+  if (messageFlip.length) messageFlip[0] ^= 0x01;
 
   const keyFlip = new Uint8Array(keyBytes);
   keyFlip[0] ^= 0x01;
 
-  const base = await computeHmac(message || 'A', key || 'default-key', 'SHA-256');
+  const base = await computeHmac(message, key, 'SHA-256');
 
   const msgKey = await crypto.subtle.importKey(
     'raw',
@@ -155,12 +155,12 @@ export async function avalancheBitFlip(message: string, key: string): Promise<{
     ['sign']
   );
 
-  const msgSig = await crypto.subtle.sign('HMAC', msgKey, messageFlip);
+  const msgSig = messageFlip.length ? await crypto.subtle.sign('HMAC', msgKey, messageFlip) : null;
   const keySig = await crypto.subtle.sign('HMAC', keyKey, messageBytes);
 
   return {
     original: base.macHex,
-    flippedMessage: toHex(new Uint8Array(msgSig)),
+    flippedMessage: msgSig ? toHex(new Uint8Array(msgSig)) : null,
     flippedKey: toHex(new Uint8Array(keySig))
   };
 }
